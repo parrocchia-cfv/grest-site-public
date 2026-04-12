@@ -79,6 +79,25 @@ Nel repository è definito il workflow [`.github/workflows/deploy-github-pages.y
 
 In locale, dopo la build statica, puoi aprire `apps/public/out/index.html` tramite un server statico (non `file://` per le policy del browser).
 
+#### Se vedi ancora il README del repository (o una pagina sbagliata)
+
+Succede quando **GitHub Pages non sta usando il deploy da Actions**, ma ancora **“Deploy from a branch”** (es. branch `main` e cartella `/ (root)`): in quel caso GitHub mostra i file del repo (README, ecc.), **non** la cartella `out/` generata in CI.
+
+Oppure stai aprendo **`github.com/…/…`** (pagina del repository): lì il README è **normale**. Il sito pubblico è solo l’URL sotto **Pages** o il **dominio custom** (es. `https://www.iscrizioni.grestcastelfranco.com`), non l’interfaccia GitHub. In **Settings → Pages** controlla l’URL indicato e “Visit site”.
+
+1. Vai in **Settings → Pages → Build and deployment**.
+2. **Source** deve essere solo **GitHub Actions**, non *Deploy from a branch*. Se vedi un branch selezionato, cambia in **GitHub Actions** e salva.
+3. Controlla **Actions** nel repo: il workflow **“Deploy public site to GitHub Pages”** deve essere **verde** dopo ogni push. Se è rosso, apri il log (spesso manca il secret `NEXT_PUBLIC_API_URL`).
+4. Apri il sito dall’URL indicato in Pages (**“Visit site”** o il dominio custom), **non** la pagina principale del repository `github.com/…/…` (quella è sempre codice + README).
+
+#### “Next.js by GitHub Actions” nelle impostazioni Pages
+
+È solo un **preset / suggerimento** dell’interfaccia GitHub. Non devi per forza usarlo: il deploy reale è il file **`.github/workflows/deploy-github-pages.yml`** in questo repo. L’importante è che la sorgente sia **GitHub Actions** e che quella workflow sia quella che gira. Se in passato hai aggiunto **un’altra** workflow “Next.js” dal wizard di GitHub, può essere in conflitto: tieni solo questa o assicurati che non ci siano due deploy diversi.
+
+#### Sito su `https://<utente>.github.io/<nome-repo>/` (senza dominio custom)
+
+Next genera asset in `/_next/…`. Su **project site** il sito è servito sotto `/<nome-repo>/`, quindi servono `basePath` e `assetPrefix`. Finché usi solo il **dominio custom** puntato a Pages, resti sulla root e **non** serve `basePath`. Se testi solo l’URL `github.io/repo/`, chiedi o aggiungi configurazione `basePath` (vedi issue / documentazione avanzata).
+
 ---
 
 ## Comportamento del form (implementazione attuale)
