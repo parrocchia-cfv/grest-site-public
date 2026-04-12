@@ -33,18 +33,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # NON usare cache: npm qui: actions/setup-node richiede package-lock.json in root e fallisce se manca.
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: npm
 
       - name: Install dependencies
         run: |
           if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
             npm ci
           else
-            echo "::warning::Nessun lockfile in root del repo: uso npm install. Committa package-lock.json (root monorepo) per build riproducibili."
             npm install
           fi
 
