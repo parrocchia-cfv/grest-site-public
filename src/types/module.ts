@@ -1,0 +1,105 @@
+/**
+ * Types for the dynamic module schema (aligned with specifiche_moduli_e_architettura.md).
+ */
+
+/** i18n object: locale key -> string (v1: it only) */
+export type I18n = { it: string };
+
+/** Condition for showIf / requiredIf */
+export type ConditionOp =
+  | 'eq'
+  | 'neq'
+  | 'in'
+  | 'notIn'
+  | 'contains'
+  | 'notContains'
+  | 'intersects'
+  | 'notIntersects'
+  | 'empty'
+  | 'notEmpty';
+
+export interface Condition {
+  field: string;
+  op: ConditionOp;
+  value?: unknown;
+}
+
+/** Field types supported in v1 */
+export type FieldType =
+  | 'text'
+  | 'email'
+  | 'number'
+  | 'textarea'
+  | 'select'
+  | 'radio'
+  | 'checkbox'
+  | 'checkbox-group'
+  | 'switch'
+  | 'date';
+
+/** Option for select/radio (optional in v1) */
+export interface FieldOption {
+  value: string;
+  label: I18n;
+}
+
+export interface Field {
+  id: string;
+  type: FieldType;
+  label: I18n;
+  placeholder?: I18n;
+  required: boolean;
+  validation?: string;
+  showIf?: Condition;
+  requiredIf?: Condition;
+  options?: FieldOption[];
+  min?: number;
+  max?: number;
+}
+
+export interface StepRepeatConfig {
+  countFieldId: string;
+  minCount?: number;
+  maxCount?: number;
+}
+
+export interface Step {
+  id: string;
+  title: I18n;
+  fields: Field[];
+  repeatFromField?: StepRepeatConfig;
+}
+
+export interface ThankYou {
+  title: I18n;
+  body: I18n;
+  notes: I18n;
+}
+
+export interface Meta {
+  title: I18n;
+  description: I18n;
+  thankYou: ThankYou;
+}
+
+/** Email dopo submit (solo lato backend); opzionale. @see docs/email-submission-templates.md */
+export interface EmailOnSubmit {
+  enabled: boolean;
+  templateFile: string;
+  to?: string[];
+  /** ID campo email nel modulo: destinatario aggiunto dal valore in submit. */
+  toFieldId?: string;
+  subject: string;
+  body: string;
+  attachDocxToo: boolean;
+}
+
+export interface Module {
+  id: string;
+  /** Public URL segment when set (see backend schema). */
+  guid?: string;
+  version: number;
+  meta: Meta;
+  steps: Step[];
+  emailOnSubmit?: EmailOnSubmit;
+}
