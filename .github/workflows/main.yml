@@ -1,17 +1,16 @@
-# Pubblica apps/public su GitHub Pages (export statico in apps/public/out).
+# Pubblica apps/public su GitHub Pages (export statico → cartella out).
+#
+# Supporta due layout:
+# - Monorepo: package.json con "workspaces" → build con --workspace=apps/public
+# - Repo solo pubblico: cartella apps/public senza workspaces in root → build dentro apps/public
 #
 # Primo utilizzo:
-# 1. Repo → Settings → Pages → Build and deployment → Source: "GitHub Actions".
-# 2. Repo → Settings → Secrets and variables → Actions → New repository secret:
-#    NEXT_PUBLIC_API_URL = URL base del backend (es. https://api.tuodominio.it) senza slash finale.
-# 3. DNS: CNAME www.iscrizioni.grestcastelfranco.com → <user>.github.io (o come da doc GitHub).
-#    Il file public/CNAME nel sito pubblico imposta il dominio sul deploy.
-# 4. Backend: consentire CORS per https://www.iscrizioni.grestcastelfranco.com
+# 1. Repo → Settings → Pages → Source: "GitHub Actions".
+# 2. Secret NEXT_PUBLIC_API_URL (base URL backend, senza slash finale).
+# 3. DNS / CNAME come da doc GitHub per il dominio custom.
 
 name: Deploy public site to GitHub Pages
 
-# Si avvia solo su push a uno di questi branch (non su ogni branch).
-# Se pushi altrove: unisci su main, oppure aggiungi il nome del branch qui sotto.
 on:
   push:
     branches: [main, master, develop, production]
@@ -33,19 +32,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # NON usare cache: npm qui: actions/setup-node richiede package-lock.json in root e fallisce se manca.
+      # cache: npm richiede package-lock in root → non usare
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
-      - name: Install dependencies
-        run: |
-          if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
-            npm ci
-          else
-            npm install
-          fi
 
       - name: Verify NEXT_PUBLIC_API_URL secret
         run: |
@@ -56,15 +47,41 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
 
-      - name: Build static export (apps/public/out)
-        run: npm run build --workspace=apps/public
+      - name: Install, build, set Pages output path
+        run: |
+          set -e
+          npm_install() {
+            if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+              npm ci
+            else
+              npm install
+            fi
+          }
+
+          if [ -f package.json ] && grep -q '"workspaces"' package.json; then
+            echo "Build: monorepo (npm workspaces)"
+            npm_install
+            npm run build --workspace=apps/public
+            echo "PAGES_OUT=apps/public/out" >> "$GITHUB_ENV"
+          elif [ -f apps/public/package.json ]; then
+            echo "Build: apps/public senza workspaces in root (repo grest-site-public tipico)"
+            cd apps/public
+            npm_install
+            npm run build
+            echo "PAGES_OUT=apps/public/out" >> "$GITHUB_ENV"
+          else
+            echo "Build: Next nella root del repo"
+            npm_install
+            npm run build
+            echo "PAGES_OUT=out" >> "$GITHUB_ENV"
+          fi
         env:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: apps/public/out
+          path: ${{ env.PAGES_OUT }}
 
   deploy:
     needs: build
