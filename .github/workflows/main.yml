@@ -1,0 +1,73 @@
+# Pubblica apps/public su GitHub Pages (export statico in apps/public/out).
+#
+# Primo utilizzo:
+# 1. Repo → Settings → Pages → Build and deployment → Source: "GitHub Actions".
+# 2. Repo → Settings → Secrets and variables → Actions → New repository secret:
+#    NEXT_PUBLIC_API_URL = URL base del backend (es. https://api.tuodominio.it) senza slash finale.
+# 3. DNS: CNAME www.iscrizioni.grestcastelfranco.com → <user>.github.io (o come da doc GitHub).
+#    Il file public/CNAME nel sito pubblico imposta il dominio sul deploy.
+# 4. Backend: consentire CORS per https://www.iscrizioni.grestcastelfranco.com
+
+name: Deploy public site to GitHub Pages
+
+# Si avvia solo su push a uno di questi branch (non su ogni branch).
+# Se pushi altrove: unisci su main, oppure aggiungi il nome del branch qui sotto.
+on:
+  push:
+    branches: [main, master, develop, production]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify NEXT_PUBLIC_API_URL secret
+        run: |
+          if [ -z "$NEXT_PUBLIC_API_URL" ]; then
+            echo "::error::Aggiungi il secret del repository NEXT_PUBLIC_API_URL (Settings → Secrets → Actions)."
+            exit 1
+          fi
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+
+      - name: Build static export (apps/public/out)
+        run: npm run build --workspace=apps/public
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/public/out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
