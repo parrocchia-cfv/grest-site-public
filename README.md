@@ -73,7 +73,7 @@ Nel repository è definito il workflow [`.github/workflows/deploy-github-pages.y
 
 1. **Settings → Pages →** sorgente **GitHub Actions** (non “Deploy from branch”).
 2. **Settings → Secrets and variables → Actions →** crea il secret **`NEXT_PUBLIC_API_URL`** con l’URL base del backend (es. `https://api.grestcastelfranco.com`).
-3. Push su `main` (o `master`): la pipeline genera `out/` e pubblica su Pages.
+3. Push su un branch che **attiva il workflow** (vedi `.github/workflows/deploy-github-pages.yml`: di solito `main`, `master`, `develop`, `production`). Se hai pushato su un altro branch, la pipeline **non** parte; unisci su `main` o lancia **Actions → Deploy public site… → Run workflow** (pulsante *workflow_dispatch*).
 4. **DNS**: CNAME `www.iscrizioni.grestcastelfranco.com` → `<tuo-utente>.github.io` (come da [documentazione GitHub](https://docs.github.com/pages/configuring-a-custom-domain-for-your-github-pages-site)); il file `public/CNAME` nel progetto pubblico allinea il dominio al deploy.
 5. Sul backend, includi l’origine del sito in **CORS** (`API_ORIGINS` o equivalente).
 
