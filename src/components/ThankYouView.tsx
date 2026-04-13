@@ -5,8 +5,9 @@ import { FormCard } from './FormCard';
 
 const LOCALE = 'it';
 
-const EMAIL_NOTICE =
-  'Riceverai una copia o una notifica per email.';
+const EMAIL_NOTICE = {
+  it: 'Se hai indicato un indirizzo email valido, potresti ricevere una copia o una notifica via email.',
+} as const;
 
 interface ThankYouViewProps {
   thankYou: ThankYou;
@@ -33,7 +34,7 @@ export function ThankYouView({
         </Typography>
         {emailOnSubmitEnabled && (
           <Alert severity="info" sx={{ mb: 2 }}>
-            {EMAIL_NOTICE}
+            {getLabel(EMAIL_NOTICE, LOCALE)}
           </Alert>
         )}
         {notes && (

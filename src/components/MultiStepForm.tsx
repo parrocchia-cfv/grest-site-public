@@ -281,12 +281,6 @@ export function MultiStepForm({ module }: MultiStepFormProps) {
             <Typography variant="body2" color="text.secondary" sx={{ maxWidth: '52rem' }}>
               {getLabel(module.meta.description, 'it')}
             </Typography>
-            {module.emailOnSubmit?.enabled === true && (
-              <Alert severity="info" sx={{ mt: 2 }}>
-                Dopo l’invio potresti ricevere una copia o una notifica per email (gestione lato
-                server).
-              </Alert>
-            )}
           </Box>
 
           <Box sx={{ px: { xs: 2, sm: 3 }, pt: 2.5, pb: 1 }}>
