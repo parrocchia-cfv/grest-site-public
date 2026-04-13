@@ -29,6 +29,7 @@ import {
   getVisibleFieldsForContext,
   type RepeatSkipReason,
 } from '@/lib/repeat-steps';
+import { emailBodyIncludesRiepilogoPlaceholder } from '@/lib/email-on-submit-ux';
 
 const EMPTY_REPEAT_MESSAGE: Record<RepeatSkipReason, string> = {
   zero:
@@ -221,6 +222,10 @@ export function MultiStepForm({ module }: MultiStepFormProps) {
       <ThankYouView
         thankYou={module.meta.thankYou}
         emailOnSubmitEnabled={module.emailOnSubmit?.enabled === true}
+        showRiepilogoInEmailHint={
+          module.emailOnSubmit?.enabled === true &&
+          emailBodyIncludesRiepilogoPlaceholder(module.emailOnSubmit?.body)
+        }
       />
     );
   }

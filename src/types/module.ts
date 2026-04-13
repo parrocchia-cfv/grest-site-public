@@ -82,6 +82,20 @@ export interface Meta {
   thankYou: ThankYou;
 }
 
+/**
+ * Tariffe per `{{ riepilogo }}` nel body email (solo backend; il public non invia prezzi).
+ * @see docs/email-submission-templates.md
+ */
+export interface RiepilogoPricing {
+  iscrizioneBaseEur?: number;
+  euroPerSettimanaSelezionata?: number;
+  tesseramentoNoiNuovoEur?: number;
+  tesseramentoFieldId?: string;
+  tesseramentoWhenValue?: string;
+  scontoFamigliaNumerosaEur?: number;
+  prezziGiteByOptionValue?: Record<string, number>;
+}
+
 /** Email dopo submit (solo lato backend); opzionale. @see docs/email-submission-templates.md */
 export interface EmailOnSubmit {
   enabled: boolean;
@@ -92,6 +106,8 @@ export interface EmailOnSubmit {
   subject: string;
   body: string;
   attachDocxToo: boolean;
+  /** Tariffe per il riepilogo email (solo se usi `{{ riepilogo }}` nel body). */
+  riepilogoPricing?: RiepilogoPricing;
 }
 
 export interface Module {
