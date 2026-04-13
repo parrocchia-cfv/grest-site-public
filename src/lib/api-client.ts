@@ -10,12 +10,29 @@ export interface SubmitPayload {
 export interface SubmitResponse {
   ok: boolean;
   submissionId?: string;
+  submissionIds?: string[];
+  submissionGroupId?: string | null;
+}
+
+/** Risposta GET pubblica per modificare un invio (stesso shape modulo di GET /api/modules/{guid}). */
+export interface PublicSubmissionLoad {
+  module: Module;
+  responses: Record<string, unknown>;
+  submittedAt: string | null;
+  submissionGroupId?: string | null;
 }
 
 export class ModuleNotFoundError extends Error {
   constructor(guid: string) {
     super(`Module not found: ${guid}`);
     this.name = 'ModuleNotFoundError';
+  }
+}
+
+export class SubmissionNotFoundError extends Error {
+  constructor(submissionId: string) {
+    super(`Submission not found: ${submissionId}`);
+    this.name = 'SubmissionNotFoundError';
   }
 }
 
@@ -61,4 +78,42 @@ export async function submitForm(
   payload: SubmitPayload
 ): Promise<SubmitResponse> {
   return fetchSubmit(moduleId, payload);
+}
+
+/**
+ * Carica modulo + risposte salvate per consentire la modifica (endpoint pubblico da implementare sul backend).
+ * @see contratti in chat / docs (GET /api/public/submissions/{submissionId})
+ */
+export async function getPublicSubmission(
+  submissionId: string
+): Promise<PublicSubmissionLoad> {
+  const base = getApiBaseUrl();
+  const res = await fetch(
+    `${base}/api/public/submissions/${encodeURIComponent(submissionId)}`
+  );
+  if (res.status === 404) throw new SubmissionNotFoundError(submissionId);
+  if (!res.ok) throw new Error(`Failed to load submission: ${res.status}`);
+  return res.json() as Promise<PublicSubmissionLoad>;
+}
+
+/**
+ * Aggiorna un invio esistente (stesso body del submit; nessun campo extra obbligatorio lato client).
+ * Il backend aggiorna `submitted_at`, persiste `responses` e può reinviare email di aggiornamento.
+ */
+export async function updatePublicSubmission(
+  submissionId: string,
+  payload: SubmitPayload
+): Promise<SubmitResponse> {
+  const base = getApiBaseUrl();
+  const res = await fetch(
+    `${base}/api/public/submissions/${encodeURIComponent(submissionId)}`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }
+  );
+  if (res.status === 404) throw new SubmissionNotFoundError(submissionId);
+  if (!res.ok) throw new Error(`Update failed: ${res.status}`);
+  return res.json() as Promise<SubmitResponse>;
 }

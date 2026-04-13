@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import type { Module } from '@/types/module';
 import { buildStepSchema } from '@/lib/step-schema';
-import { submitForm } from '@/lib/api-client';
+import { submitForm, updatePublicSubmission } from '@/lib/api-client';
 import { getLabel } from '@/lib/i18n';
 import { DynamicField } from './DynamicField';
 import { ThankYouView } from './ThankYouView';
@@ -30,6 +30,7 @@ import {
   type RepeatSkipReason,
 } from '@/lib/repeat-steps';
 import { emailBodyIncludesRiepilogoPlaceholder } from '@/lib/email-on-submit-ux';
+import { buildPublicEditSubmissionUrl } from '@/lib/public-site-url';
 
 const EMPTY_REPEAT_MESSAGE: Record<RepeatSkipReason, string> = {
   zero:
@@ -53,6 +54,15 @@ function getDefaultValues(module: Module): FormValues {
   return values;
 }
 
+function mergeInitialResponses(
+  module: Module,
+  initial: Record<string, unknown> | undefined
+): FormValues {
+  const base = getDefaultValues(module);
+  if (!initial) return base;
+  return { ...base, ...initial } as FormValues;
+}
+
 function lastVirtualIndexForModuleStep(
   virtualSteps: ReturnType<typeof expandVirtualSteps>,
   moduleStepIndex: number
@@ -64,22 +74,37 @@ function lastVirtualIndexForModuleStep(
   return last;
 }
 
-interface MultiStepFormProps {
+export interface MultiStepFormProps {
   module: Module;
+  /** Se valorizzato: flusso modifica invio esistente (PATCH), non nuovo POST. */
+  submissionId?: string;
+  /** Risposte già salvate (da GET submission); merge sui default del modulo. */
+  initialResponses?: Record<string, unknown>;
 }
 
-export function MultiStepForm({ module }: MultiStepFormProps) {
+export function MultiStepForm({
+  module,
+  submissionId,
+  initialResponses,
+}: MultiStepFormProps) {
   const [currentVirtual, setCurrentVirtual] = useState(0);
   const currentVirtualRef = useRef(0);
   currentVirtualRef.current = currentVirtual;
 
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  /** UUID primario post-invio (POST o PATCH), per link «Modifica risposta». */
+  const [successPrimarySubmissionId, setSuccessPrimarySubmissionId] = useState<string | null>(
+    null
+  );
 
-  const defaultValues = useMemo(() => getDefaultValues(module), [module]);
+  const mergedDefaultValues = useMemo(
+    () => mergeInitialResponses(module, initialResponses),
+    [module, initialResponses]
+  );
 
   const methods = useForm<FormValues>({
-    defaultValues,
+    defaultValues: mergedDefaultValues,
     mode: 'onTouched',
     resolver: (values, context, options) => {
       const steps = expandVirtualSteps(module, values as FormValues);
@@ -102,8 +127,8 @@ export function MultiStepForm({ module }: MultiStepFormProps) {
 
   /** Snapshot completo per condizioni e step ripetuti (include tutti gli step già compilati). */
   const allValues = useMemo(
-    () => ({ ...defaultValues, ...getValues() } as FormValues),
-    [defaultValues, watchedValues, getValues]
+    () => ({ ...mergedDefaultValues, ...getValues() } as FormValues),
+    [mergedDefaultValues, watchedValues, getValues]
   );
 
   const virtualSteps = useMemo(
@@ -131,9 +156,12 @@ export function MultiStepForm({ module }: MultiStepFormProps) {
   }, [module.meta.title]);
 
   useEffect(() => {
-    reset(getDefaultValues(module));
+    reset(mergeInitialResponses(module, initialResponses));
     setCurrentVirtual(0);
-  }, [module, reset]);
+    setSubmitted(false);
+    setSubmitError(null);
+    setSuccessPrimarySubmissionId(null);
+  }, [module, initialResponses, reset]);
 
   useEffect(() => {
     const vals = getValues();
@@ -201,7 +229,19 @@ export function MultiStepForm({ module }: MultiStepFormProps) {
         responses: values as Record<string, string | number | boolean | string[]>,
       };
       try {
-        await submitForm(module.id, payload);
+        if (submissionId) {
+          const res = await updatePublicSubmission(submissionId, payload);
+          setSuccessPrimarySubmissionId(
+            res.submissionId?.trim() || submissionId.trim() || null
+          );
+        } else {
+          const res = await submitForm(module.id, payload);
+          const primary =
+            res.submissionId?.trim() ||
+            (res.submissionIds && res.submissionIds[0]?.trim()) ||
+            null;
+          setSuccessPrimarySubmissionId(primary);
+        }
         setSubmitted(true);
       } catch (e) {
         setSubmitError(
@@ -209,8 +249,13 @@ export function MultiStepForm({ module }: MultiStepFormProps) {
         );
       }
     },
-    [isLastStep, module.id]
+    [isLastStep, module.id, submissionId]
   );
+
+  const editSubmissionUrl =
+    successPrimarySubmissionId != null
+      ? buildPublicEditSubmissionUrl(successPrimarySubmissionId)
+      : null;
 
   const onSubmitClick = useMemo(
     () => handleSubmitForm(onSubmit),
@@ -226,6 +271,8 @@ export function MultiStepForm({ module }: MultiStepFormProps) {
           module.emailOnSubmit?.enabled === true &&
           emailBodyIncludesRiepilogoPlaceholder(module.emailOnSubmit?.body)
         }
+        isUpdateAfterEdit={!!submissionId}
+        editSubmissionUrl={editSubmissionUrl}
       />
     );
   }
