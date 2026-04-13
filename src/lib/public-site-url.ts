@@ -9,13 +9,14 @@ export function getPublicSiteBaseUrl(): string | null {
 }
 
 /**
- * URL per modificare una compilazione: `/modifica?submission=<uuid>`.
- * `submissionId` = `submissions.id` (prima riga / primario da POST submit).
+ * URL per modificare una compilazione: `/modifica?group=<uuid>`.
+ * Preferisci `submissionGroupId` dalla risposta POST/PATCH; altrimenti `submissionId`
+ * (invii salvati prima che il backend valorizzasse sempre il gruppo).
  */
-export function buildPublicEditSubmissionUrl(submissionId: string): string | null {
+export function buildPublicEditSubmissionUrl(editToken: string): string | null {
   const base = getPublicSiteBaseUrl();
-  const id = submissionId?.trim();
+  const id = editToken?.trim();
   if (!base || !id) return null;
   const root = base.endsWith('/') ? base : `${base}/`;
-  return new URL(`modifica?submission=${encodeURIComponent(id)}`, root).href;
+  return new URL(`modifica?group=${encodeURIComponent(id)}`, root).href;
 }

@@ -23,7 +23,7 @@ cp apps/public/.env.example apps/public/.env.local
 | Variabile | Obbligatorio | Descrizione |
 |-----------|--------------|-------------|
 | `NEXT_PUBLIC_API_URL` | **Sì** | Base URL del backend (es. `http://localhost:8000` o `https://api.tuodominio.it`). Senza questa variabile l’app non può chiamare l’API. |
-| `NEXT_PUBLIC_PUBLIC_SITE_URL` | No | URL del **sito pubblico** così com’è servito agli utenti (es. `https://www.iscrizioni.grestcastelfranco.com` o in locale `http://localhost:3000`). Usato per costruire il link **«Modifica risposta»** dopo un invio riuscito (`/modifica?submission=<uuid>`). Slash finale opzionale (viene normalizzato). Se assente, dopo l’invio non viene mostrato il link (il salvataggio resta valido). |
+| `NEXT_PUBLIC_PUBLIC_SITE_URL` | No | URL del **sito pubblico** così com’è servito agli utenti (es. `https://www.iscrizioni.grestcastelfranco.com` o in locale `http://localhost:3000`). Usato per costruire il link **«Modifica risposta»** dopo un invio riuscito (`/modifica?group=<uuid>`). Slash finale opzionale (viene normalizzato). Se assente, dopo l’invio non viene mostrato il link (il salvataggio resta valido). |
 
 **Nota:** non c’è modalità mock: il frontend parla sempre con il backend reale.
 
@@ -64,10 +64,10 @@ Serve `NEXT_PUBLIC_API_URL` in ambiente (es. `.env.local` in locale).
 | `/` | Reindirizza a `/in-arrivo`. |
 | `/in-arrivo` | Messaggio temporaneo sulle iscrizioni in arrivo (stesso testo anche da 404 e da link modulo non valido). |
 | `/form?guid=…` | Carica il modulo con `GET /api/modules/{guid}` e mostra il form multi-step. |
-| `/modifica?submission=…` | Modifica una compilazione già inviata: `GET /api/public/submissions/{id}` + invio con `PATCH` (stesso body del submit). Richiede endpoint pubblici sul backend. |
+| `/modifica?group=…` | Modifica una compilazione già inviata: `GET /api/public/submissions/{id}` + `PATCH` (stesso body del submit). Query consigliata: **`group`** = `submissionGroupId` dalla risposta submit. È accettato anche il vecchio **`?submission=`** (stesso valore). |
 
 Il valore di **`guid`** è lo slug pubblico del modulo (di solito il **GUID** configurato in admin).  
-Il parametro **`submission`** è l’**UUID** della riga in `submissions.id` restituito al primo invio (`submissionId` / `submissionIds` nella risposta POST submit).  
+Il parametro **`group`** è **`submissionGroupId`** (invio logico, tutti i figli nello stesso form); in mancanza si può usare un **`submissionId`** / id riga. Invii molto vecchi senza gruppo in DB: solo id riga.  
 I vecchi link **`/form/<guid>`** (path) su hosting statico vengono reindirizzati automaticamente dalla pagina `404.html` al formato con query.
 
 ### GitHub Pages (deploy automatico)

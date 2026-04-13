@@ -13,7 +13,11 @@ import { FormCard } from '@/components/FormCard';
 
 export function EditSubmissionClient() {
   const searchParams = useSearchParams();
-  const submissionId = searchParams.get('submission')?.trim() ?? '';
+  /** Preferisci `group` (= submission_group_id); `submission` resta per link vecchi. */
+  const submissionId =
+    searchParams.get('group')?.trim() ||
+    searchParams.get('submission')?.trim() ||
+    '';
   const [module, setModule] = useState<Module | null>(null);
   const [responses, setResponses] = useState<Record<string, unknown> | null>(null);
   const [notFound, setNotFound] = useState(false);

@@ -24,7 +24,7 @@ function ModificaFallback() {
   );
 }
 
-/** Modifica compilazione: `/modifica?submission=<uuid>` (UUID riga `submissions.id`). */
+/** Modifica compilazione: `/modifica?group=<uuid>` (preferisci `submissionGroupId`; accettato anche `?submission=`). */
 export default function ModificaPage() {
   return (
     <Suspense fallback={<ModificaFallback />}>

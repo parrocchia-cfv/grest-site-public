@@ -31,7 +31,7 @@ interface ThankYouViewProps {
   showRiepilogoInEmailHint?: boolean;
   /** Dopo salvataggio da flusso “modifica risposta” (PATCH submission). */
   isUpdateAfterEdit?: boolean;
-  /** URL pubblico `/modifica?submission=…` se `NEXT_PUBLIC_PUBLIC_SITE_URL` è configurato. */
+  /** URL pubblico `/modifica?group=…` se `NEXT_PUBLIC_PUBLIC_SITE_URL` è configurato. */
   editSubmissionUrl?: string | null;
 }
 

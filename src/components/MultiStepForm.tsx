@@ -93,10 +93,8 @@ export function MultiStepForm({
 
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  /** UUID primario post-invio (POST o PATCH), per link «Modifica risposta». */
-  const [successPrimarySubmissionId, setSuccessPrimarySubmissionId] = useState<string | null>(
-    null
-  );
+  /** Token per link «Modifica»: di norma `submissionGroupId`, altrimenti id riga. */
+  const [successEditUrlToken, setSuccessEditUrlToken] = useState<string | null>(null);
 
   const mergedDefaultValues = useMemo(
     () => mergeInitialResponses(module, initialResponses),
@@ -160,7 +158,7 @@ export function MultiStepForm({
     setCurrentVirtual(0);
     setSubmitted(false);
     setSubmitError(null);
-    setSuccessPrimarySubmissionId(null);
+    setSuccessEditUrlToken(null);
   }, [module, initialResponses, reset]);
 
   useEffect(() => {
@@ -231,8 +229,12 @@ export function MultiStepForm({
       try {
         if (submissionId) {
           const res = await updatePublicSubmission(submissionId, payload);
-          setSuccessPrimarySubmissionId(
-            res.submissionId?.trim() || submissionId.trim() || null
+          const primary =
+            res.submissionId?.trim() ||
+            (res.submissionIds && res.submissionIds[0]?.trim()) ||
+            null;
+          setSuccessEditUrlToken(
+            res.submissionGroupId?.trim() || primary || submissionId.trim() || null
           );
         } else {
           const res = await submitForm(module.id, payload);
@@ -240,7 +242,7 @@ export function MultiStepForm({
             res.submissionId?.trim() ||
             (res.submissionIds && res.submissionIds[0]?.trim()) ||
             null;
-          setSuccessPrimarySubmissionId(primary);
+          setSuccessEditUrlToken(res.submissionGroupId?.trim() || primary);
         }
         setSubmitted(true);
       } catch (e) {
@@ -253,9 +255,7 @@ export function MultiStepForm({
   );
 
   const editSubmissionUrl =
-    successPrimarySubmissionId != null
-      ? buildPublicEditSubmissionUrl(successPrimarySubmissionId)
-      : null;
+    successEditUrlToken != null ? buildPublicEditSubmissionUrl(successEditUrlToken) : null;
 
   const onSubmitClick = useMemo(
     () => handleSubmitForm(onSubmit),
