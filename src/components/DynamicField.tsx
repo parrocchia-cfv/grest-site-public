@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import type { Field, Step } from '@/types/module';
 import { getLabel } from '@/lib/i18n';
 import { evaluateCondition } from '@/lib/conditions';
@@ -66,6 +66,7 @@ export function DynamicField({
     control,
     formState: { errors },
     getValues,
+    setValue,
   } = useFormContext();
   const watched = useWatch({ control });
   const values = useMemo(
@@ -81,6 +82,22 @@ export function DynamicField({
   const placeholder = getLabel(field.placeholder, LOCALE);
   const errObj = fieldError(errors as Record<string, unknown>, formKey);
   const errMsg = errObj?.message as string | undefined;
+  const enabledRadioValues = useMemo(() => {
+    if (field.type !== 'radio') return null;
+    const opts = field.options ?? [];
+    return opts
+      .filter((opt) => !opt.enabledIf || evaluateCondition(opt.enabledIf, getValue))
+      .map((opt) => opt.value);
+  }, [field, getValue]);
+
+  useEffect(() => {
+    if (field.type !== 'radio' || !enabledRadioValues) return;
+    const current = values[formKey];
+    if (typeof current !== 'string' || current === '') return;
+    if (!enabledRadioValues.includes(current)) {
+      setValue(formKey, '', { shouldDirty: true, shouldValidate: true });
+    }
+  }, [enabledRadioValues, field.type, formKey, setValue, values]);
 
   const common = {
     label,
@@ -233,6 +250,9 @@ export function DynamicField({
                     value={opt.value}
                     control={<Radio />}
                     label={getLabel(opt.label, LOCALE)}
+                    disabled={
+                      !!opt.enabledIf && !evaluateCondition(opt.enabledIf, getValue)
+                    }
                   />
                 ))}
               </RadioGroup>

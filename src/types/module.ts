@@ -41,6 +41,7 @@ export type FieldType =
 export interface FieldOption {
   value: string;
   label: I18n;
+  enabledIf?: Condition;
 }
 
 export interface Field {

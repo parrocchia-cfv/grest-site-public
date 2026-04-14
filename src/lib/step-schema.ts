@@ -88,6 +88,21 @@ export function buildStepSchema(
       }
 
       if (val !== undefined && val !== null && val !== '') {
+        if (f.type === 'radio') {
+          const enabledOptions = (f.options ?? []).filter(
+            (opt) => !opt.enabledIf || evaluateCondition(opt.enabledIf, getValue)
+          );
+          const allowedValues = enabledOptions.map((opt) => opt.value);
+          if (typeof val !== 'string' || !allowedValues.includes(val)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: [storageKey],
+              message: 'Selezione non disponibile',
+            });
+            continue;
+          }
+        }
+
         if (!validator(val)) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
