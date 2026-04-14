@@ -102,6 +102,23 @@ export function buildStepSchema(
             continue;
           }
         }
+        if (f.type === 'checkbox-group') {
+          const enabledOptions = (f.options ?? []).filter(
+            (opt) => !opt.enabledIf || evaluateCondition(opt.enabledIf, getValue)
+          );
+          const allowedValues = new Set(enabledOptions.map((opt) => opt.value));
+          if (
+            !Array.isArray(val) ||
+            val.some((v) => typeof v !== 'string' || !allowedValues.has(v))
+          ) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: [storageKey],
+              message: 'Selezione non disponibile',
+            });
+            continue;
+          }
+        }
 
         if (!validator(val)) {
           ctx.addIssue({

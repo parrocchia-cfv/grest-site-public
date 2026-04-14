@@ -82,8 +82,8 @@ export function DynamicField({
   const placeholder = getLabel(field.placeholder, LOCALE);
   const errObj = fieldError(errors as Record<string, unknown>, formKey);
   const errMsg = errObj?.message as string | undefined;
-  const enabledRadioValues = useMemo(() => {
-    if (field.type !== 'radio') return null;
+  const enabledOptionValues = useMemo(() => {
+    if (field.type !== 'radio' && field.type !== 'checkbox-group') return null;
     const opts = field.options ?? [];
     return opts
       .filter((opt) => !opt.enabledIf || evaluateCondition(opt.enabledIf, getValue))
@@ -91,13 +91,24 @@ export function DynamicField({
   }, [field, getValue]);
 
   useEffect(() => {
-    if (field.type !== 'radio' || !enabledRadioValues) return;
+    if (field.type !== 'radio' || !enabledOptionValues) return;
     const current = values[formKey];
     if (typeof current !== 'string' || current === '') return;
-    if (!enabledRadioValues.includes(current)) {
+    if (!enabledOptionValues.includes(current)) {
       setValue(formKey, '', { shouldDirty: true, shouldValidate: true });
     }
-  }, [enabledRadioValues, field.type, formKey, setValue, values]);
+  }, [enabledOptionValues, field.type, formKey, setValue, values]);
+
+  useEffect(() => {
+    if (field.type !== 'checkbox-group' || !enabledOptionValues) return;
+    const current = values[formKey];
+    const selected = Array.isArray(current) ? current.filter((v): v is string => typeof v === 'string') : [];
+    if (selected.length === 0) return;
+    const cleaned = selected.filter((v) => enabledOptionValues.includes(v));
+    if (cleaned.length !== selected.length) {
+      setValue(formKey, cleaned, { shouldDirty: true, shouldValidate: true });
+    }
+  }, [enabledOptionValues, field.type, formKey, setValue, values]);
 
   const common = {
     label,
@@ -244,17 +255,19 @@ export function DynamicField({
                 value={f.value ?? ''}
                 onChange={(_, v) => f.onChange(v)}
               >
-                {field.options?.map((opt) => (
-                  <FormControlLabel
-                    key={opt.value}
-                    value={opt.value}
-                    control={<Radio />}
-                    label={getLabel(opt.label, LOCALE)}
-                    disabled={
-                      !!opt.enabledIf && !evaluateCondition(opt.enabledIf, getValue)
-                    }
-                  />
-                ))}
+                {field.options?.map((opt) => {
+                  const isEnabled =
+                    !opt.enabledIf || evaluateCondition(opt.enabledIf, getValue);
+                  return (
+                    <FormControlLabel
+                      key={opt.value}
+                      value={opt.value}
+                      control={<Radio />}
+                      label={getLabel(opt.label, LOCALE)}
+                      disabled={!isEnabled}
+                    />
+                  );
+                })}
               </RadioGroup>
               {errMsg && <FormHelperText>{errMsg}</FormHelperText>}
             </FormControl>
@@ -306,13 +319,17 @@ export function DynamicField({
                 {field.options?.map((opt) => {
                   const optLabel = getLabel(opt.label, LOCALE);
                   const isChecked = selected.includes(opt.value);
+                  const isEnabled =
+                    !opt.enabledIf || evaluateCondition(opt.enabledIf, getValue);
                   return (
                     <FormControlLabel
                       key={opt.value}
                       control={
                         <Checkbox
                           checked={isChecked}
+                          disabled={!isEnabled}
                           onChange={(e) => {
+                            if (!isEnabled) return;
                             if (e.target.checked) {
                               f.onChange([...selected, opt.value]);
                             } else {
@@ -322,6 +339,7 @@ export function DynamicField({
                         />
                       }
                       label={optLabel}
+                      disabled={!isEnabled}
                     />
                   );
                 })}
