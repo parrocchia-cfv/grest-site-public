@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "npx --yes serve@14 out -l 3000",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "node --import tsx --test \"src/lib/**/*.test.ts\""
   },
   "dependencies": {
     "@emotion/react": "^11.11.3",
@@ -27,6 +28,7 @@
     "@types/react-dom": "^18.2.19",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.3",
+    "tsx": "^4.20.6",
     "typescript": "^5.3.3"
   }
 }

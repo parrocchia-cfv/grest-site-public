@@ -31,6 +31,7 @@ import {
 } from '@/lib/repeat-steps';
 import { emailBodyIncludesRiepilogoPlaceholder } from '@/lib/email-on-submit-ux';
 import { buildPublicEditSubmissionUrl } from '@/lib/public-site-url';
+import { sanitizeResponsesBySchema } from '@/lib/sanitize-responses-by-schema';
 
 const EMPTY_REPEAT_MESSAGE: Record<RepeatSkipReason, string> = {
   zero:
@@ -93,13 +94,19 @@ export function MultiStepForm({
 
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [sanitizeNotice, setSanitizeNotice] = useState<string | null>(null);
   /** Token per link «Modifica»: di norma `submissionGroupId`, altrimenti id riga. */
   const [successEditUrlToken, setSuccessEditUrlToken] = useState<string | null>(null);
 
-  const mergedDefaultValues = useMemo(
-    () => mergeInitialResponses(module, initialResponses),
-    [module, initialResponses]
-  );
+  const sanitizedInitial = useMemo(() => {
+    const merged = mergeInitialResponses(module, initialResponses);
+    if (!submissionId) {
+      return { responses: merged, removed: [] as { fieldId: string; value: string }[] };
+    }
+    return sanitizeResponsesBySchema(module, merged);
+  }, [module, initialResponses, submissionId]);
+
+  const mergedDefaultValues = sanitizedInitial.responses;
 
   const methods = useForm<FormValues>({
     defaultValues: mergedDefaultValues,
@@ -154,12 +161,24 @@ export function MultiStepForm({
   }, [module.meta.title]);
 
   useEffect(() => {
-    reset(mergeInitialResponses(module, initialResponses));
+    reset(sanitizedInitial.responses);
     setCurrentVirtual(0);
     setSubmitted(false);
     setSubmitError(null);
     setSuccessEditUrlToken(null);
-  }, [module, initialResponses, reset]);
+    if (submissionId && sanitizedInitial.removed.length > 0) {
+      if (process.env.NODE_ENV !== 'production') {
+        for (const r of sanitizedInitial.removed) {
+          console.info(`[sanitize] removed disabled option: ${r.fieldId} -> ${r.value}`);
+        }
+      }
+      setSanitizeNotice(
+        'Alcune scelte non piu disponibili sono state rimosse automaticamente.'
+      );
+    } else {
+      setSanitizeNotice(null);
+    }
+  }, [submissionId, sanitizedInitial, reset]);
 
   useEffect(() => {
     const vals = getValues();
@@ -221,13 +240,33 @@ export function MultiStepForm({
         return;
       }
       setSubmitError(null);
-      const payload = {
-        moduleId: module.id,
-        submittedAt: new Date().toISOString(),
-        responses: values as Record<string, string | number | boolean | string[]>,
-      };
       try {
         if (submissionId) {
+          const sanitized = sanitizeResponsesBySchema(
+            module,
+            values as Record<string, unknown>
+          );
+          if (sanitized.removed.length > 0) {
+            if (process.env.NODE_ENV !== 'production') {
+              for (const r of sanitized.removed) {
+                console.info(
+                  `[sanitize] removed disabled option: ${r.fieldId} -> ${r.value}`
+                );
+              }
+            }
+            setSanitizeNotice(
+              'Alcune scelte non piu disponibili sono state rimosse automaticamente.'
+            );
+            reset(sanitized.responses);
+          }
+          const payload = {
+            moduleId: module.id,
+            submittedAt: new Date().toISOString(),
+            responses: sanitized.responses as Record<
+              string,
+              string | number | boolean | string[]
+            >,
+          };
           const res = await updatePublicSubmission(submissionId, payload);
           const primary =
             res.submissionId?.trim() ||
@@ -237,6 +276,11 @@ export function MultiStepForm({
             res.submissionGroupId?.trim() || primary || submissionId.trim() || null
           );
         } else {
+          const payload = {
+            moduleId: module.id,
+            submittedAt: new Date().toISOString(),
+            responses: values as Record<string, string | number | boolean | string[]>,
+          };
           const res = await submitForm(module.id, payload);
           const primary =
             res.submissionId?.trim() ||
@@ -413,6 +457,11 @@ export function MultiStepForm({
             {submitError && (
               <Alert severity="error" sx={{ mt: 2 }} onClose={() => setSubmitError(null)}>
                 {submitError}
+              </Alert>
+            )}
+            {sanitizeNotice && (
+              <Alert severity="info" sx={{ mt: 2 }} onClose={() => setSanitizeNotice(null)}>
+                {sanitizeNotice}
               </Alert>
             )}
           </Box>
