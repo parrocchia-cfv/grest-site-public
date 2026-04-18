@@ -7,7 +7,7 @@ import { z } from 'zod';
 import type { Module } from '@/types/module';
 import { buildStepSchema } from '@/lib/step-schema';
 import { submitForm, updatePublicSubmission } from '@/lib/api-client';
-import { getLabel } from '@/lib/i18n';
+import { getLabel, multilineI18nSx } from '@/lib/i18n';
 import { DynamicField } from './DynamicField';
 import { ThankYouView } from './ThankYouView';
 import {
@@ -371,10 +371,14 @@ export function MultiStepForm({
               bgcolor: 'rgba(255,255,255,0.85)',
             }}
           >
-            <Typography variant="h5" component="h1" gutterBottom>
+            <Typography variant="h5" component="h1" gutterBottom sx={multilineI18nSx}>
               {getLabel(module.meta.title, 'it')}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: '52rem' }}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ maxWidth: '52rem', ...multilineI18nSx }}
+            >
               {getLabel(module.meta.description, 'it')}
             </Typography>
           </Box>
@@ -415,6 +419,7 @@ export function MultiStepForm({
                       sx={{
                         '& .MuiStepLabel-label': {
                           fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                          whiteSpace: 'pre-line',
                         },
                       }}
                     >
@@ -427,7 +432,12 @@ export function MultiStepForm({
           </Box>
 
           <Box sx={{ px: { xs: 2, sm: 3 }, py: 2 }}>
-            <Typography variant="h6" component="h2" gutterBottom sx={{ mb: repeatSubtitle ? 0.5 : 2 }}>
+            <Typography
+              variant="h6"
+              component="h2"
+              gutterBottom
+              sx={{ mb: repeatSubtitle ? 0.5 : 2, ...multilineI18nSx }}
+            >
               {stepTitle}
             </Typography>
             {repeatSubtitle && (

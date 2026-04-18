@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { ThankYou } from '@/types/module';
-import { getLabel } from '@/lib/i18n';
+import { getLabel, multilineI18nSx } from '@/lib/i18n';
 import { Alert, Box, Button, Container, Link, Typography } from '@mui/material';
 import { FormCard } from './FormCard';
 
@@ -61,14 +61,18 @@ export function ThankYouView({
   return (
     <Container maxWidth="sm">
       <FormCard sx={{ p: { xs: 2.5, sm: 3.5 } }}>
-        <Typography variant="h5" component="h1" gutterBottom>
+        <Typography variant="h5" component="h1" gutterBottom sx={multilineI18nSx}>
           {title}
         </Typography>
-        <Typography variant="body1" paragraph sx={{ color: 'text.primary' }}>
+        <Typography
+          variant="body1"
+          paragraph
+          sx={{ color: 'text.primary', ...multilineI18nSx }}
+        >
           {body}
         </Typography>
         {isUpdateAfterEdit && (
-          <Alert severity="success" sx={{ mb: 2 }}>
+          <Alert severity="success" sx={{ mb: 2, ...multilineI18nSx }}>
             {getLabel(EDIT_SAVED_NOTICE, LOCALE)}
           </Alert>
         )}
@@ -89,23 +93,32 @@ export function ThankYouView({
                 </Typography>
               )}
             </Box>
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1.25 }}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              display="block"
+              sx={{ mt: 1.25, ...multilineI18nSx }}
+            >
               {getLabel(EDIT_LINK_HELPER, LOCALE)}
             </Typography>
           </Alert>
         )}
         {emailOnSubmitEnabled && (
-          <Alert severity="info" sx={{ mb: 2 }}>
+          <Alert severity="info" sx={{ mb: 2, ...multilineI18nSx }}>
             {getLabel(EMAIL_NOTICE, LOCALE)}
             {showRiepilogoInEmailHint && (
-              <Typography component="span" variant="body2" sx={{ display: 'block', mt: 1.25 }}>
+              <Typography
+                component="span"
+                variant="body2"
+                sx={{ display: 'block', mt: 1.25, ...multilineI18nSx }}
+              >
                 {getLabel(EMAIL_RIEPILOGO_HINT, LOCALE)}
               </Typography>
             )}
           </Alert>
         )}
         {notes && (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, ...multilineI18nSx }}>
             {notes}
           </Typography>
         )}

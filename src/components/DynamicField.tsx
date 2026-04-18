@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo } from 'react';
 import type { Field, Step } from '@/types/module';
-import { getLabel } from '@/lib/i18n';
+import { getLabel, multilineI18nSx } from '@/lib/i18n';
 import { evaluateCondition } from '@/lib/conditions';
 import { makeConditionGetValue } from '@/lib/repeat-steps';
 import {
@@ -116,6 +116,7 @@ export function DynamicField({
     error: !!errMsg,
     helperText: errMsg,
     required: isRequired,
+    InputLabelProps: { sx: multilineI18nSx },
   };
 
   const labelId = `${formKey.replace(/[^a-zA-Z0-9_-]/g, '_')}-label`;
@@ -201,7 +202,7 @@ export function DynamicField({
               fullWidth
               margin="normal"
               type="date"
-              InputLabelProps={{ shrink: true }}
+              InputLabelProps={{ shrink: true, sx: multilineI18nSx }}
               value={f.value ?? ''}
             />
           )}
@@ -216,7 +217,9 @@ export function DynamicField({
           defaultValue=""
           render={({ field: f }) => (
             <FormControl fullWidth margin="normal" error={!!errMsg} required={isRequired}>
-              <InputLabel id={labelId}>{label}</InputLabel>
+              <InputLabel id={labelId} sx={multilineI18nSx}>
+                {label}
+              </InputLabel>
               <Select
                 {...f}
                 labelId={labelId}
@@ -225,7 +228,7 @@ export function DynamicField({
                 onChange={(e) => f.onChange(e.target.value)}
               >
                 {field.options?.map((opt) => (
-                  <MenuItem key={opt.value} value={opt.value}>
+                  <MenuItem key={opt.value} value={opt.value} sx={multilineI18nSx}>
                     {getLabel(opt.label, LOCALE)}
                   </MenuItem>
                 ))}
@@ -249,7 +252,9 @@ export function DynamicField({
               error={!!errMsg}
               required={isRequired}
             >
-              <FormLabel component="legend">{label}</FormLabel>
+              <FormLabel component="legend" sx={multilineI18nSx}>
+                {label}
+              </FormLabel>
               <RadioGroup
                 row
                 value={f.value ?? ''}
@@ -265,6 +270,7 @@ export function DynamicField({
                       control={<Radio />}
                       label={getLabel(opt.label, LOCALE)}
                       disabled={!isEnabled}
+                      sx={{ '& .MuiFormControlLabel-label': multilineI18nSx }}
                     />
                   );
                 })}
@@ -296,6 +302,7 @@ export function DynamicField({
                     {isRequired && <RequiredMark />}
                   </>
                 }
+                sx={{ '& .MuiFormControlLabel-label': multilineI18nSx }}
               />
               {errMsg && <FormHelperText>{errMsg}</FormHelperText>}
             </FormControl>
@@ -313,7 +320,10 @@ export function DynamicField({
             const selected = Array.isArray(f.value) ? (f.value as string[]) : [];
             return (
               <FormControl margin="normal" error={!!errMsg} required={isRequired}>
-                <FormLabel component="legend" sx={{ mb: 1, fontWeight: 500 }}>
+                <FormLabel
+                  component="legend"
+                  sx={{ mb: 1, fontWeight: 500, ...multilineI18nSx }}
+                >
                   {label}
                 </FormLabel>
                 {field.options?.map((opt) => {
@@ -340,6 +350,7 @@ export function DynamicField({
                       }
                       label={optLabel}
                       disabled={!isEnabled}
+                      sx={{ '& .MuiFormControlLabel-label': multilineI18nSx }}
                     />
                   );
                 })}
@@ -370,7 +381,10 @@ export function DynamicField({
                   checked={!!f.value}
                   onChange={(e) => f.onChange(e.target.checked)}
                 />
-                <Box component="span" sx={{ typography: 'body1' }}>
+                <Box
+                  component="span"
+                  sx={{ typography: 'body1', ...multilineI18nSx }}
+                >
                   {label}
                   {isRequired && <RequiredMark />}
                 </Box>
