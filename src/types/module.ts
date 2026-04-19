@@ -44,6 +44,14 @@ export interface FieldOption {
   enabledIf?: Condition;
 }
 
+/** Solo per `type: 'select'`: opzione «Altro»; testo in `{fieldId}_other`. */
+export interface SelectOtherConfig {
+  enabled: boolean;
+  value?: string;
+  label?: I18n;
+  placeholder?: I18n;
+}
+
 export interface Field {
   id: string;
   type: FieldType;
@@ -54,6 +62,7 @@ export interface Field {
   showIf?: Condition;
   requiredIf?: Condition;
   options?: FieldOption[];
+  selectOther?: SelectOtherConfig;
   min?: number;
   max?: number;
 }

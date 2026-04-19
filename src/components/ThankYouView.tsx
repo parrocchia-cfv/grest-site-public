@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import type { ThankYou } from '@/types/module';
 import { getLabel, multilineI18nSx } from '@/lib/i18n';
-import { Alert, Box, Button, Container, Link, Typography } from '@mui/material';
+import { Alert, Box, Button, Container, Typography } from '@mui/material';
 import { FormCard } from './FormCard';
 
 const LOCALE = 'it';
@@ -87,14 +87,9 @@ export function ThankYouView({
         )}
         {editSubmissionUrl && (
           <Alert severity="success" sx={{ mb: 2 }}>
-            <Typography variant="body2" sx={{ mb: 1 }}>
-              <Link href={editSubmissionUrl} underline="always">
-                Modifica risposta
-              </Link>
-            </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
               <Button size="small" variant="outlined" onClick={() => void handleCopyEditLink()}>
-                Copia link
+                Copia link per modificare la risposta
               </Button>
               {copyDone && (
                 <Typography variant="caption" color="success.dark">

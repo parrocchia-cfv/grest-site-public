@@ -160,3 +160,48 @@ test('select: rimuove valore se opzione disabilitata da enabledIf', () => {
   assert.equal(responses.sel, '');
   assert.deepEqual(removed, [{ fieldId: 'sel', value: 'b' }]);
 });
+
+const selectOtherModule: Module = {
+  id: 'mod-sel-o',
+  version: 1,
+  meta: {
+    title: { it: 'Test' },
+    description: { it: 'Test' },
+    thankYou: { title: { it: 'ok' }, body: { it: 'ok' }, notes: { it: 'ok' } },
+  },
+  steps: [
+    {
+      id: 's1',
+      title: { it: 'S' },
+      fields: [
+        {
+          id: 'sel',
+          type: 'select',
+          label: { it: 'Scelta' },
+          required: false,
+          options: [{ value: 'a', label: { it: 'A' } }],
+          selectOther: { enabled: true, value: '__other__', label: { it: 'Altro' } },
+        },
+      ],
+    },
+  ],
+};
+
+test('select altro: pulisce _other se il select non è il valore sintetico', () => {
+  const { responses } = sanitizeResponsesBySchema(selectOtherModule, {
+    sel: 'a',
+    sel_other: 'testo residuo',
+  });
+  assert.equal(responses.sel, 'a');
+  assert.equal(responses.sel_other, '');
+});
+
+test('select altro: mantiene valore sintetico e testo', () => {
+  const { responses, removed } = sanitizeResponsesBySchema(selectOtherModule, {
+    sel: '__other__',
+    sel_other: 'specificato',
+  });
+  assert.equal(responses.sel, '__other__');
+  assert.equal(responses.sel_other, 'specificato');
+  assert.equal(removed.length, 0);
+});

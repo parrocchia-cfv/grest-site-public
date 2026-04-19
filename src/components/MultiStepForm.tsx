@@ -51,6 +51,9 @@ function getDefaultValues(module: Module): FormValues {
     if (step.repeatFromField) continue;
     for (const field of step.fields) {
       values[field.id] = defaultValueForField(field);
+      if (field.type === 'select' && field.selectOther?.enabled) {
+        values[`${field.id}_other`] = '';
+      }
     }
   }
   return values;
@@ -200,6 +203,12 @@ export function MultiStepForm({
               shouldValidate: false,
             });
           }
+          if (field.type === 'select' && field.selectOther?.enabled) {
+            const ok = `${field.id}_${i}_other`;
+            if (getValues(ok) === undefined) {
+              setValue(ok, '', { shouldDirty: false, shouldValidate: false });
+            }
+          }
         }
         for (let i = N; i < cap; i++) {
           const key = `${field.id}_${i}`;
@@ -208,6 +217,10 @@ export function MultiStepForm({
               shouldDirty: false,
               shouldValidate: false,
             });
+          }
+          if (field.type === 'select' && field.selectOther?.enabled) {
+            const ok = `${field.id}_${i}_other`;
+            setValue(ok, '', { shouldDirty: false, shouldValidate: false });
           }
         }
       }
@@ -226,9 +239,11 @@ export function MultiStepForm({
       setCurrentVirtual((s) => s + 1);
       return;
     }
-    const keys = visibleFields.map((f) =>
-      fieldFormKey(f.id, vs.step, vs.repeatIndex)
-    );
+    const keys = visibleFields.flatMap((f) => {
+      const k = fieldFormKey(f.id, vs.step, vs.repeatIndex);
+      if (f.type === 'select' && f.selectOther?.enabled) return [k, `${k}_other`];
+      return [k];
+    });
     const valid = keys.length === 0 ? true : await trigger(keys);
     if (valid) setCurrentVirtual((s) => s + 1);
   }, [trigger, virtualSteps, currentVirtual, visibleFields]);

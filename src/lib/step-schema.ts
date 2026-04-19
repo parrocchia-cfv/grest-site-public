@@ -4,6 +4,7 @@ import { evaluateCondition } from './conditions';
 import { getValidator } from './validation-registry';
 import type { GetFieldValue } from './conditions';
 import { makeConditionGetValue } from './repeat-steps';
+import { SELECT_OTHER_TEXT_MAX_LEN, selectOtherSentinel } from './select-other';
 
 function isFieldRequired(
   field: Field,
@@ -59,6 +60,9 @@ export function buildStepSchema(
   const shape: Record<string, z.ZodTypeAny> = {};
   for (const f of visibleFields) {
     shape[keyFor(f.id)] = baseTypeForField(f).optional();
+    if (f.type === 'select' && f.selectOther?.enabled) {
+      shape[`${keyFor(f.id)}_other`] = z.string().optional();
+    }
   }
 
   return z.object(shape).passthrough().superRefine((data, ctx) => {
@@ -92,7 +96,9 @@ export function buildStepSchema(
           const enabledOptions = (f.options ?? []).filter(
             (opt) => !opt.enabledIf || evaluateCondition(opt.enabledIf, getValue)
           );
-          const allowedValues = enabledOptions.map((opt) => opt.value);
+          let allowedValues = enabledOptions.map((opt) => opt.value);
+          const otherS = f.type === 'select' ? selectOtherSentinel(f) : null;
+          if (otherS) allowedValues = [...allowedValues, otherS];
           if (typeof val !== 'string' || !allowedValues.includes(val)) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
@@ -100,6 +106,26 @@ export function buildStepSchema(
               message: 'Selezione non disponibile',
             });
             continue;
+          }
+        }
+        if (f.type === 'select') {
+          const ov = selectOtherSentinel(f);
+          if (ov && typeof val === 'string' && val === ov) {
+            const ok = merged[`${storageKey}_other`];
+            const text = typeof ok === 'string' ? ok.trim() : '';
+            if (text === '') {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: [`${storageKey}_other`],
+                message: 'Specificare il testo per l’opzione «Altro»',
+              });
+            } else if (text.length > SELECT_OTHER_TEXT_MAX_LEN) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: [`${storageKey}_other`],
+                message: `Massimo ${SELECT_OTHER_TEXT_MAX_LEN} caratteri`,
+              });
+            }
           }
         }
         if (f.type === 'checkbox-group') {

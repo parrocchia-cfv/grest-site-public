@@ -1,6 +1,7 @@
 import type { Field, Module, Step } from '@/types/module';
 import { evaluateCondition } from '@/lib/conditions';
 import { computeRepeatCount, makeConditionGetValue } from '@/lib/repeat-steps';
+import { selectOtherSentinel } from '@/lib/select-other';
 
 export interface RemovedOptionEntry {
   fieldId: string;
@@ -17,11 +18,16 @@ function enabledOptionValues(
   getValue: (fieldId: string) => unknown
 ): Set<string> {
   const options = field.options ?? [];
-  return new Set(
+  const set = new Set(
     options
       .filter((opt) => !opt.enabledIf || evaluateCondition(opt.enabledIf, getValue))
       .map((opt) => opt.value)
   );
+  if (field.type === 'select') {
+    const ov = selectOtherSentinel(field);
+    if (ov) set.add(ov);
+  }
+  return set;
 }
 
 function sanitizeFieldInContext(
@@ -41,7 +47,24 @@ function sanitizeFieldInContext(
     if (typeof current === 'string' && current !== '' && !enabled.has(current)) {
       removed.push({ fieldId: storageKey, value: current });
       state[storageKey] = '';
+      const otherKey = `${storageKey}_other`;
+      if (state[otherKey] !== undefined && String(state[otherKey]).trim() !== '') {
+        state[otherKey] = '';
+      }
       return true;
+    }
+    if (field.type === 'select' && field.selectOther?.enabled) {
+      const ov = selectOtherSentinel(field);
+      if (ov) {
+        const cur = state[storageKey];
+        if (typeof cur !== 'string' || cur !== ov) {
+          const otherKey = `${storageKey}_other`;
+          if (state[otherKey] !== undefined && String(state[otherKey]).trim() !== '') {
+            state[otherKey] = '';
+            return true;
+          }
+        }
+      }
     }
     return false;
   }

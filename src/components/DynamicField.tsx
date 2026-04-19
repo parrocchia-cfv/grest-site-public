@@ -21,6 +21,11 @@ import {
   Box,
 } from '@mui/material';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
+import {
+  SELECT_OTHER_TEXT_MAX_LEN,
+  selectOtherSentinel,
+  selectOtherTextKey,
+} from '@/lib/select-other';
 
 const LOCALE = 'it';
 
@@ -91,9 +96,14 @@ export function DynamicField({
       return null;
     }
     const opts = field.options ?? [];
-    return opts
+    const base = opts
       .filter((opt) => !opt.enabledIf || evaluateCondition(opt.enabledIf, getValue))
       .map((opt) => opt.value);
+    if (field.type === 'select') {
+      const ov = selectOtherSentinel(field);
+      if (ov) return [...base, ov];
+    }
+    return base;
   }, [field, getValue]);
 
   useEffect(() => {
@@ -215,46 +225,99 @@ export function DynamicField({
         />
       );
 
-    case 'select':
+    case 'select': {
+      const otherVal = selectOtherSentinel(field);
+      const otherKey = selectOtherTextKey(formKey);
+      const otherErr = fieldError(errors as Record<string, unknown>, otherKey)?.message as
+        | string
+        | undefined;
+      const otherMenuLabel = getLabel(field.selectOther?.label ?? { it: 'Altro' }, LOCALE);
+      const otherPlaceholder = field.selectOther?.placeholder?.it
+        ? getLabel(field.selectOther.placeholder, LOCALE)
+        : undefined;
       return (
-        <Controller
-          name={formKey}
-          control={control}
-          defaultValue=""
-          render={({ field: f }) => (
-            <FormControl fullWidth margin="normal" error={!!errMsg} required={isRequired}>
-              <InputLabel id={labelId} sx={multilineI18nSx}>
-                {label}
-              </InputLabel>
-              <Select
-                {...f}
-                labelId={labelId}
-                label={label}
-                value={f.value ?? ''}
-                onChange={(e) => f.onChange(e.target.value)}
-                displayEmpty
-                inputProps={{ 'aria-invalid': !!errMsg }}
-              >
-                {field.options?.map((opt) => {
-                  const isEnabled =
-                    !opt.enabledIf || evaluateCondition(opt.enabledIf, getValue);
-                  return (
-                    <MenuItem
-                      key={opt.value}
-                      value={opt.value}
-                      disabled={!isEnabled}
-                      sx={multilineI18nSx}
-                    >
-                      {getLabel(opt.label, LOCALE)}
+        <>
+          <Controller
+            name={formKey}
+            control={control}
+            defaultValue=""
+            render={({ field: f }) => (
+              <FormControl fullWidth margin="normal" error={!!errMsg} required={isRequired}>
+                <InputLabel id={labelId} sx={multilineI18nSx}>
+                  {label}
+                </InputLabel>
+                <Select
+                  {...f}
+                  labelId={labelId}
+                  label={label}
+                  value={f.value ?? ''}
+                  onChange={(e) => {
+                    const v = e.target.value as string;
+                    f.onChange(v);
+                    if (otherVal && v !== otherVal) {
+                      setValue(otherKey, '', { shouldDirty: true, shouldValidate: true });
+                    }
+                  }}
+                  displayEmpty
+                  inputProps={{ 'aria-invalid': !!errMsg }}
+                >
+                  {field.options?.map((opt) => {
+                    const isEnabled =
+                      !opt.enabledIf || evaluateCondition(opt.enabledIf, getValue);
+                    return (
+                      <MenuItem
+                        key={opt.value}
+                        value={opt.value}
+                        disabled={!isEnabled}
+                        sx={multilineI18nSx}
+                      >
+                        {getLabel(opt.label, LOCALE)}
+                      </MenuItem>
+                    );
+                  })}
+                  {otherVal && (
+                    <MenuItem value={otherVal} sx={multilineI18nSx}>
+                      {otherMenuLabel}
                     </MenuItem>
-                  );
-                })}
-              </Select>
-              {errMsg && <FormHelperText>{errMsg}</FormHelperText>}
-            </FormControl>
+                  )}
+                </Select>
+                {errMsg && <FormHelperText>{errMsg}</FormHelperText>}
+              </FormControl>
+            )}
+          />
+          {otherVal && (
+            <Controller
+              name={otherKey}
+              control={control}
+              defaultValue=""
+              render={({ field: f }) => {
+                const main = values[formKey];
+                const show = typeof main === 'string' && main === otherVal;
+                return (
+                  <TextField
+                    {...f}
+                    fullWidth
+                    margin="normal"
+                    label={`${otherMenuLabel} — specificare`}
+                    placeholder={otherPlaceholder}
+                    value={f.value ?? ''}
+                    error={!!otherErr}
+                    helperText={otherErr}
+                    required={show}
+                    sx={{ display: show ? undefined : 'none' }}
+                    inputProps={{
+                      maxLength: SELECT_OTHER_TEXT_MAX_LEN,
+                      'aria-invalid': !!otherErr,
+                    }}
+                    InputLabelProps={{ sx: multilineI18nSx }}
+                  />
+                );
+              }}
+            />
           )}
-        />
+        </>
       );
+    }
 
     case 'radio':
       return (
