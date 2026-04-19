@@ -6,18 +6,24 @@ import { FormCard } from './FormCard';
 
 const LOCALE = 'it';
 
-const EMAIL_NOTICE = {
-  it: 'Se hai indicato un indirizzo email valido, potresti ricevere una copia o una notifica via email.',
-} as const;
-
 /** Se `emailOnSubmit.body` contiene `{{ riepilogo }}` (riepilogo generato dal backend). */
 const EMAIL_RIEPILOGO_HINT = {
-  it: 'Nella mail di conferma troverai anche il riepilogo economico delle voci indicate (generato dal sistema).',
+  it: 'Nella mail troverai anche il riepilogo economico delle voci indicate.',
 } as const;
 
-const EDIT_SAVED_NOTICE = {
-  it: 'Le modifiche sono state salvate. Se il modulo prevede notifiche email, potresti ricevere un messaggio con l’aggiornamento.',
-} as const;
+function emailCopyNoticeIt(email: string | null): string {
+  if (email) {
+    return `Riceverai una copia dell’iscrizione all’indirizzo ${email}.`;
+  }
+  return 'Riceverai una copia dell’iscrizione all’indirizzo email che hai indicato nel modulo.';
+}
+
+function editSavedNoticeIt(email: string | null): string {
+  if (email) {
+    return `Le modifiche sono state salvate. Riceverai l’aggiornamento all’indirizzo ${email}.`;
+  }
+  return 'Le modifiche sono state salvate. Riceverai l’aggiornamento all’indirizzo email che hai indicato nel modulo.';
+}
 
 const EDIT_LINK_HELPER = {
   it: 'Conserva questo link in un posto sicuro: serve solo a chi ha compilato il modulo per modificare le risposte in seguito.',
@@ -25,8 +31,10 @@ const EDIT_LINK_HELPER = {
 
 interface ThankYouViewProps {
   thankYou: ThankYou;
-  /** Se true (da schema modulo `emailOnSubmit.enabled`), messaggio neutro senza promettere il contenuto dell’email. */
+  /** Se true (da schema modulo `emailOnSubmit.enabled`), messaggio sulla copia email. */
   emailOnSubmitEnabled?: boolean;
+  /** Email destinatario notifiche (da `emailOnSubmit.toFieldId` nei responses inviati). */
+  notifierEmail?: string | null;
   /** Opzionale: body email contiene `{{ riepilogo }}` → messaggio più esplicito sul riepilogo in mail. */
   showRiepilogoInEmailHint?: boolean;
   /** Dopo salvataggio da flusso “modifica risposta” (PATCH submission). */
@@ -38,6 +46,7 @@ interface ThankYouViewProps {
 export function ThankYouView({
   thankYou,
   emailOnSubmitEnabled,
+  notifierEmail,
   showRiepilogoInEmailHint,
   isUpdateAfterEdit,
   editSubmissionUrl,
@@ -73,7 +82,7 @@ export function ThankYouView({
         </Typography>
         {isUpdateAfterEdit && (
           <Alert severity="success" sx={{ mb: 2, ...multilineI18nSx }}>
-            {getLabel(EDIT_SAVED_NOTICE, LOCALE)}
+            {editSavedNoticeIt(notifierEmail ?? null)}
           </Alert>
         )}
         {editSubmissionUrl && (
@@ -105,7 +114,7 @@ export function ThankYouView({
         )}
         {emailOnSubmitEnabled && (
           <Alert severity="info" sx={{ mb: 2, ...multilineI18nSx }}>
-            {getLabel(EMAIL_NOTICE, LOCALE)}
+            {emailCopyNoticeIt(notifierEmail ?? null)}
             {showRiepilogoInEmailHint && (
               <Typography
                 component="span"

@@ -32,6 +32,7 @@ import {
 import { emailBodyIncludesRiepilogoPlaceholder } from '@/lib/email-on-submit-ux';
 import { buildPublicEditSubmissionUrl } from '@/lib/public-site-url';
 import { sanitizeResponsesBySchema } from '@/lib/sanitize-responses-by-schema';
+import { getSubmittedEmailFromResponses } from '@/lib/thank-you-email';
 
 const EMPTY_REPEAT_MESSAGE: Record<RepeatSkipReason, string> = {
   zero:
@@ -97,6 +98,8 @@ export function MultiStepForm({
   const [sanitizeNotice, setSanitizeNotice] = useState<string | null>(null);
   /** Token per link «Modifica»: di norma `submissionGroupId`, altrimenti id riga. */
   const [successEditUrlToken, setSuccessEditUrlToken] = useState<string | null>(null);
+  /** Email mostrata nella thank-you (da `emailOnSubmit.toFieldId` nel payload inviato). */
+  const [notifierEmail, setNotifierEmail] = useState<string | null>(null);
 
   const sanitizedInitial = useMemo(() => {
     const merged = mergeInitialResponses(module, initialResponses);
@@ -166,6 +169,7 @@ export function MultiStepForm({
     setSubmitted(false);
     setSubmitError(null);
     setSuccessEditUrlToken(null);
+    setNotifierEmail(null);
     if (submissionId && sanitizedInitial.removed.length > 0) {
       if (process.env.NODE_ENV !== 'production') {
         for (const r of sanitizedInitial.removed) {
@@ -268,6 +272,12 @@ export function MultiStepForm({
             >,
           };
           const res = await updatePublicSubmission(submissionId, payload);
+          setNotifierEmail(
+            getSubmittedEmailFromResponses(
+              sanitized.responses,
+              module.emailOnSubmit?.toFieldId
+            )
+          );
           const primary =
             res.submissionId?.trim() ||
             (res.submissionIds && res.submissionIds[0]?.trim()) ||
@@ -282,6 +292,12 @@ export function MultiStepForm({
             responses: values as Record<string, string | number | boolean | string[]>,
           };
           const res = await submitForm(module.id, payload);
+          setNotifierEmail(
+            getSubmittedEmailFromResponses(
+              values as Record<string, unknown>,
+              module.emailOnSubmit?.toFieldId
+            )
+          );
           const primary =
             res.submissionId?.trim() ||
             (res.submissionIds && res.submissionIds[0]?.trim()) ||
@@ -295,7 +311,7 @@ export function MultiStepForm({
         );
       }
     },
-    [isLastStep, module.id, submissionId]
+    [isLastStep, module, submissionId]
   );
 
   const editSubmissionUrl =
@@ -311,6 +327,7 @@ export function MultiStepForm({
       <ThankYouView
         thankYou={module.meta.thankYou}
         emailOnSubmitEnabled={module.emailOnSubmit?.enabled === true}
+        notifierEmail={notifierEmail}
         showRiepilogoInEmailHint={
           module.emailOnSubmit?.enabled === true &&
           emailBodyIncludesRiepilogoPlaceholder(module.emailOnSubmit?.body)
