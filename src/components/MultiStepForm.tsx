@@ -50,6 +50,7 @@ function getDefaultValues(module: Module): FormValues {
   for (const step of module.steps) {
     if (step.repeatFromField) continue;
     for (const field of step.fields) {
+      if (field.type === 'notice') continue;
       values[field.id] = defaultValueForField(field);
       if (field.type === 'select' && field.selectOther?.enabled) {
         values[`${field.id}_other`] = '';
@@ -195,6 +196,7 @@ export function MultiStepForm({
       const N = computeRepeatCount(vals, cfg);
       const cap = cfg.maxCount != null ? Math.min(cfg.maxCount + 20, 300) : 300;
       for (const field of step.fields) {
+        if (field.type === 'notice') continue;
         for (let i = 0; i < N; i++) {
           const key = `${field.id}_${i}`;
           if (getValues(key) === undefined) {
@@ -239,11 +241,13 @@ export function MultiStepForm({
       setCurrentVirtual((s) => s + 1);
       return;
     }
-    const keys = visibleFields.flatMap((f) => {
-      const k = fieldFormKey(f.id, vs.step, vs.repeatIndex);
-      if (f.type === 'select' && f.selectOther?.enabled) return [k, `${k}_other`];
-      return [k];
-    });
+    const keys = visibleFields
+      .filter((f) => f.type !== 'notice')
+      .flatMap((f) => {
+        const k = fieldFormKey(f.id, vs.step, vs.repeatIndex);
+        if (f.type === 'select' && f.selectOther?.enabled) return [k, `${k}_other`];
+        return [k];
+      });
     const valid = keys.length === 0 ? true : await trigger(keys);
     if (valid) setCurrentVirtual((s) => s + 1);
   }, [trigger, virtualSteps, currentVirtual, visibleFields]);

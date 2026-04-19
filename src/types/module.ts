@@ -35,7 +35,10 @@ export type FieldType =
   | 'checkbox'
   | 'checkbox-group'
   | 'switch'
-  | 'date';
+  | 'date'
+  | 'notice';
+
+export type NoticeVariant = 'info' | 'warning' | 'error';
 
 /** Option for select/radio (optional in v1) */
 export interface FieldOption {
@@ -63,6 +66,8 @@ export interface Field {
   requiredIf?: Condition;
   options?: FieldOption[];
   selectOther?: SelectOtherConfig;
+  noticeVariant?: NoticeVariant;
+  noticeText?: I18n;
   min?: number;
   max?: number;
 }

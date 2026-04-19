@@ -56,9 +56,10 @@ export function buildStepSchema(
   const visibleFields = step.fields.filter(
     (f) => !f.showIf || evaluateCondition(f.showIf, getValuePreview)
   );
+  const inputFields = visibleFields.filter((f) => f.type !== 'notice');
 
   const shape: Record<string, z.ZodTypeAny> = {};
-  for (const f of visibleFields) {
+  for (const f of inputFields) {
     shape[keyFor(f.id)] = baseTypeForField(f).optional();
     if (f.type === 'select' && f.selectOther?.enabled) {
       shape[`${keyFor(f.id)}_other`] = z.string().optional();
@@ -69,7 +70,7 @@ export function buildStepSchema(
     const merged = { ...values, ...data } as Record<string, unknown>;
     const getValue = makeConditionGetValue(merged, step, repeatIndex);
 
-    for (const f of visibleFields) {
+    for (const f of inputFields) {
       const storageKey = keyFor(f.id);
       const val = merged[storageKey];
       const required = isFieldRequired(f, getValue);

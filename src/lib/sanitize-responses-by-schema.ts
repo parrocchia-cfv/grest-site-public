@@ -37,6 +37,9 @@ function sanitizeFieldInContext(
   state: Record<string, unknown>,
   removed: RemovedOptionEntry[]
 ): boolean {
+  if (field.type === 'notice') {
+    return false;
+  }
   if (field.type !== 'radio' && field.type !== 'checkbox-group' && field.type !== 'select') {
     return false;
   }

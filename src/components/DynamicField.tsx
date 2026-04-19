@@ -19,6 +19,7 @@ import {
   RadioGroup,
   Checkbox,
   Box,
+  Alert,
 } from '@mui/material';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import {
@@ -138,6 +139,21 @@ export function DynamicField({
   const labelId = `${formKey.replace(/[^a-zA-Z0-9_-]/g, '_')}-label`;
 
   switch (field.type) {
+    case 'notice':
+      return (
+        <Alert
+          severity={field.noticeVariant ?? 'info'}
+          sx={{
+            mt: 1,
+            mb: 0.5,
+            whiteSpace: 'pre-wrap',
+            '& .MuiAlert-message': { width: '100%', ...multilineI18nSx },
+          }}
+        >
+          {getLabel(field.noticeText ?? field.label, LOCALE)}
+        </Alert>
+      );
+
     case 'text':
     case 'email':
       return (
