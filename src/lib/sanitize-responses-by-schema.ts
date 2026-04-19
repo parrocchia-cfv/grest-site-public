@@ -31,10 +31,12 @@ function sanitizeFieldInContext(
   state: Record<string, unknown>,
   removed: RemovedOptionEntry[]
 ): boolean {
-  if (field.type !== 'radio' && field.type !== 'checkbox-group') return false;
+  if (field.type !== 'radio' && field.type !== 'checkbox-group' && field.type !== 'select') {
+    return false;
+  }
   const enabled = enabledOptionValues(field, getValue);
 
-  if (field.type === 'radio') {
+  if (field.type === 'radio' || field.type === 'select') {
     const current = state[storageKey];
     if (typeof current === 'string' && current !== '' && !enabled.has(current)) {
       removed.push({ fieldId: storageKey, value: current });

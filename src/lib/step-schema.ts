@@ -88,7 +88,7 @@ export function buildStepSchema(
       }
 
       if (val !== undefined && val !== null && val !== '') {
-        if (f.type === 'radio') {
+        if (f.type === 'radio' || f.type === 'select') {
           const enabledOptions = (f.options ?? []).filter(
             (opt) => !opt.enabledIf || evaluateCondition(opt.enabledIf, getValue)
           );

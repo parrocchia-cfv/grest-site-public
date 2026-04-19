@@ -113,3 +113,50 @@ test('repeat 3 figli: sanitizzazione indipendente per _0,_1,_2', () => {
   assert.deepEqual(responses.uscite_1_2_1, ['base']);
   assert.deepEqual(responses.uscite_1_2_2, ['base', '02_1']);
 });
+
+const selectModule: Module = {
+  id: 'mod-sel',
+  version: 1,
+  meta: {
+    title: { it: 'Test' },
+    description: { it: 'Test' },
+    thankYou: { title: { it: 'ok' }, body: { it: 'ok' }, notes: { it: 'ok' } },
+  },
+  steps: [
+    {
+      id: 's1',
+      title: { it: 'S' },
+      fields: [
+        {
+          id: 'flag',
+          type: 'switch',
+          label: { it: 'F' },
+          required: true,
+        },
+        {
+          id: 'sel',
+          type: 'select',
+          label: { it: 'Scelta' },
+          required: false,
+          options: [
+            { value: 'a', label: { it: 'A' } },
+            {
+              value: 'b',
+              label: { it: 'B' },
+              enabledIf: { field: 'flag', op: 'eq', value: true },
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+test('select: rimuove valore se opzione disabilitata da enabledIf', () => {
+  const { responses, removed } = sanitizeResponsesBySchema(selectModule, {
+    flag: false,
+    sel: 'b',
+  });
+  assert.equal(responses.sel, '');
+  assert.deepEqual(removed, [{ fieldId: 'sel', value: 'b' }]);
+});

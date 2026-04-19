@@ -107,6 +107,8 @@ export interface EmailOnSubmit {
   subject: string;
   body: string;
   attachDocxToo: boolean;
+  /** Allegati extra in `email_templates/` sul server (non compilati). */
+  staticAttachmentFiles?: string[];
   /** Tariffe per il riepilogo email (solo se usi `{{ riepilogo }}` nel body). */
   riepilogoPricing?: RiepilogoPricing;
 }

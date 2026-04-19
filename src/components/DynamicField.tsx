@@ -83,7 +83,13 @@ export function DynamicField({
   const errObj = fieldError(errors as Record<string, unknown>, formKey);
   const errMsg = errObj?.message as string | undefined;
   const enabledOptionValues = useMemo(() => {
-    if (field.type !== 'radio' && field.type !== 'checkbox-group') return null;
+    if (
+      field.type !== 'radio' &&
+      field.type !== 'checkbox-group' &&
+      field.type !== 'select'
+    ) {
+      return null;
+    }
     const opts = field.options ?? [];
     return opts
       .filter((opt) => !opt.enabledIf || evaluateCondition(opt.enabledIf, getValue))
@@ -91,7 +97,7 @@ export function DynamicField({
   }, [field, getValue]);
 
   useEffect(() => {
-    if (field.type !== 'radio' || !enabledOptionValues) return;
+    if ((field.type !== 'radio' && field.type !== 'select') || !enabledOptionValues) return;
     const current = values[formKey];
     if (typeof current !== 'string' || current === '') return;
     if (!enabledOptionValues.includes(current)) {
@@ -226,12 +232,23 @@ export function DynamicField({
                 label={label}
                 value={f.value ?? ''}
                 onChange={(e) => f.onChange(e.target.value)}
+                displayEmpty
+                inputProps={{ 'aria-invalid': !!errMsg }}
               >
-                {field.options?.map((opt) => (
-                  <MenuItem key={opt.value} value={opt.value} sx={multilineI18nSx}>
-                    {getLabel(opt.label, LOCALE)}
-                  </MenuItem>
-                ))}
+                {field.options?.map((opt) => {
+                  const isEnabled =
+                    !opt.enabledIf || evaluateCondition(opt.enabledIf, getValue);
+                  return (
+                    <MenuItem
+                      key={opt.value}
+                      value={opt.value}
+                      disabled={!isEnabled}
+                      sx={multilineI18nSx}
+                    >
+                      {getLabel(opt.label, LOCALE)}
+                    </MenuItem>
+                  );
+                })}
               </Select>
               {errMsg && <FormHelperText>{errMsg}</FormHelperText>}
             </FormControl>
