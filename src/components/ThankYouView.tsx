@@ -1,7 +1,6 @@
-import { useState, useCallback } from 'react';
 import type { ThankYou } from '@/types/module';
 import { getLabel, multilineI18nSx } from '@/lib/i18n';
-import { Alert, Box, Button, Container, Typography } from '@mui/material';
+import { Alert, Container, Typography } from '@mui/material';
 import { FormCard } from './FormCard';
 
 const LOCALE = 'it';
@@ -25,10 +24,6 @@ function editSavedNoticeIt(email: string | null): string {
   return 'Le modifiche sono state salvate. Riceverai l’aggiornamento all’indirizzo email che hai indicato nel modulo.';
 }
 
-const EDIT_LINK_HELPER = {
-  it: 'Conserva questo link in un posto sicuro: serve solo a chi ha compilato il modulo per modificare le risposte in seguito.',
-} as const;
-
 interface ThankYouViewProps {
   thankYou: ThankYou;
   /** Se true (da schema modulo `emailOnSubmit.enabled`), messaggio sulla copia email. */
@@ -39,8 +34,8 @@ interface ThankYouViewProps {
   showRiepilogoInEmailHint?: boolean;
   /** Dopo salvataggio da flusso “modifica risposta” (PATCH submission). */
   isUpdateAfterEdit?: boolean;
-  /** URL pubblico `/modifica?group=…` se `NEXT_PUBLIC_PUBLIC_SITE_URL` è configurato. */
-  editSubmissionUrl?: string | null;
+  /** Lista d’attesa (posti esauriti per sede/settimana), da risposta submit. */
+  capacityWaitlisted?: boolean;
 }
 
 export function ThankYouView({
@@ -49,23 +44,11 @@ export function ThankYouView({
   notifierEmail,
   showRiepilogoInEmailHint,
   isUpdateAfterEdit,
-  editSubmissionUrl,
+  capacityWaitlisted,
 }: ThankYouViewProps) {
   const title = getLabel(thankYou.title, LOCALE);
   const body = getLabel(thankYou.body, LOCALE);
   const notes = getLabel(thankYou.notes, LOCALE);
-  const [copyDone, setCopyDone] = useState(false);
-
-  const handleCopyEditLink = useCallback(async () => {
-    if (!editSubmissionUrl) return;
-    try {
-      await navigator.clipboard.writeText(editSubmissionUrl);
-      setCopyDone(true);
-      window.setTimeout(() => setCopyDone(false), 2500);
-    } catch {
-      setCopyDone(false);
-    }
-  }, [editSubmissionUrl]);
 
   return (
     <Container maxWidth="sm">
@@ -80,31 +63,16 @@ export function ThankYouView({
         >
           {body}
         </Typography>
+        {capacityWaitlisted && (
+          <Alert severity="warning" sx={{ mb: 2, ...multilineI18nSx }}>
+            Uno o più iscritti risultano in lista d’attesa perché i posti confermati per la sede e le
+            settimane scelte erano esauriti. La richiesta è comunque registrata; l’ordine interno è
+            gestito dagli organizzatori.
+          </Alert>
+        )}
         {isUpdateAfterEdit && (
           <Alert severity="success" sx={{ mb: 2, ...multilineI18nSx }}>
             {editSavedNoticeIt(notifierEmail ?? null)}
-          </Alert>
-        )}
-        {editSubmissionUrl && (
-          <Alert severity="success" sx={{ mb: 2 }}>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
-              <Button size="small" variant="outlined" onClick={() => void handleCopyEditLink()}>
-                Copia link per modificare la risposta
-              </Button>
-              {copyDone && (
-                <Typography variant="caption" color="success.dark">
-                  Link copiato negli appunti.
-                </Typography>
-              )}
-            </Box>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              display="block"
-              sx={{ mt: 1.25, ...multilineI18nSx }}
-            >
-              {getLabel(EDIT_LINK_HELPER, LOCALE)}
-            </Typography>
           </Alert>
         )}
         {emailOnSubmitEnabled && (

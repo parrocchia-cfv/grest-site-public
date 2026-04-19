@@ -1,4 +1,5 @@
 import type { Module } from '@/types/module';
+import type { EnrollmentSnapshot } from '@/lib/enrollment-capacity';
 import { getApiBaseUrl } from './api-config';
 
 export interface SubmitPayload {
@@ -12,6 +13,8 @@ export interface SubmitResponse {
   submissionId?: string;
   submissionIds?: string[];
   submissionGroupId?: string | null;
+  /** True se almeno una riga è in lista d’attesa (posti esauriti per sede/settimana). */
+  capacityWaitlisted?: boolean;
 }
 
 /** Risposta GET pubblica per modificare un invio (stesso shape modulo di GET /api/modules/{guid}). */
@@ -68,6 +71,19 @@ async function fetchSubmit(
  */
 export async function getModule(guid: string): Promise<Module> {
   return fetchModule(guid);
+}
+
+/**
+ * Snapshot posti disponibili per sede/settimana (moduli con `enrollmentCapacity` attivo).
+ */
+export async function getEnrollmentSnapshot(guid: string): Promise<EnrollmentSnapshot> {
+  const base = getApiBaseUrl();
+  const res = await fetch(
+    `${base}/api/modules/${encodeURIComponent(guid)}/enrollment-snapshot`
+  );
+  if (res.status === 404) throw new ModuleNotFoundError(guid);
+  if (!res.ok) throw new Error(`Failed to load enrollment snapshot: ${res.status}`);
+  return res.json() as Promise<EnrollmentSnapshot>;
 }
 
 /**

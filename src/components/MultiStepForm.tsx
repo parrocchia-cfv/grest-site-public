@@ -6,7 +6,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import type { Module } from '@/types/module';
 import { buildStepSchema } from '@/lib/step-schema';
-import { submitForm, updatePublicSubmission } from '@/lib/api-client';
+import { getEnrollmentSnapshot, submitForm, updatePublicSubmission } from '@/lib/api-client';
+import type { EnrollmentSnapshot } from '@/lib/enrollment-capacity';
+import { capacityWaitlistHint } from '@/lib/enrollment-capacity';
 import { getLabel, multilineI18nSx } from '@/lib/i18n';
 import { DynamicField } from './DynamicField';
 import { ThankYouView } from './ThankYouView';
@@ -30,7 +32,6 @@ import {
   type RepeatSkipReason,
 } from '@/lib/repeat-steps';
 import { emailBodyIncludesRiepilogoPlaceholder } from '@/lib/email-on-submit-ux';
-import { buildPublicEditSubmissionUrl } from '@/lib/public-site-url';
 import { sanitizeResponsesBySchema } from '@/lib/sanitize-responses-by-schema';
 import { getSubmittedEmailFromResponses } from '@/lib/thank-you-email';
 
@@ -100,10 +101,11 @@ export function MultiStepForm({
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [sanitizeNotice, setSanitizeNotice] = useState<string | null>(null);
-  /** Token per link «Modifica»: di norma `submissionGroupId`, altrimenti id riga. */
-  const [successEditUrlToken, setSuccessEditUrlToken] = useState<string | null>(null);
   /** Email mostrata nella thank-you (da `emailOnSubmit.toFieldId` nel payload inviato). */
   const [notifierEmail, setNotifierEmail] = useState<string | null>(null);
+  const [enrollmentSnapshot, setEnrollmentSnapshot] = useState<EnrollmentSnapshot | null>(null);
+  /** Dopo submit/PATCH: almeno una riga in lista d’attesa (da risposta API). */
+  const [capacityWaitlistedResult, setCapacityWaitlistedResult] = useState(false);
 
   const sanitizedInitial = useMemo(() => {
     const merged = mergeInitialResponses(module, initialResponses);
@@ -168,12 +170,31 @@ export function MultiStepForm({
   }, [module.meta.title]);
 
   useEffect(() => {
+    if (!module.enrollmentCapacity?.enabled) {
+      setEnrollmentSnapshot(null);
+      return;
+    }
+    const slug = module.guid?.trim() || module.id;
+    let cancelled = false;
+    getEnrollmentSnapshot(slug)
+      .then((s) => {
+        if (!cancelled) setEnrollmentSnapshot(s);
+      })
+      .catch(() => {
+        if (!cancelled) setEnrollmentSnapshot(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [module.id, module.guid, module.enrollmentCapacity?.enabled]);
+
+  useEffect(() => {
     reset(sanitizedInitial.responses);
     setCurrentVirtual(0);
     setSubmitted(false);
     setSubmitError(null);
-    setSuccessEditUrlToken(null);
     setNotifierEmail(null);
+    setCapacityWaitlistedResult(false);
     if (submissionId && sanitizedInitial.removed.length > 0) {
       if (process.env.NODE_ENV !== 'production') {
         for (const r of sanitizedInitial.removed) {
@@ -291,18 +312,12 @@ export function MultiStepForm({
             >,
           };
           const res = await updatePublicSubmission(submissionId, payload);
+          setCapacityWaitlistedResult(res.capacityWaitlisted === true);
           setNotifierEmail(
             getSubmittedEmailFromResponses(
               sanitized.responses,
               module.emailOnSubmit?.toFieldId
             )
-          );
-          const primary =
-            res.submissionId?.trim() ||
-            (res.submissionIds && res.submissionIds[0]?.trim()) ||
-            null;
-          setSuccessEditUrlToken(
-            res.submissionGroupId?.trim() || primary || submissionId.trim() || null
           );
         } else {
           const payload = {
@@ -311,17 +326,13 @@ export function MultiStepForm({
             responses: values as Record<string, string | number | boolean | string[]>,
           };
           const res = await submitForm(module.id, payload);
+          setCapacityWaitlistedResult(res.capacityWaitlisted === true);
           setNotifierEmail(
             getSubmittedEmailFromResponses(
               values as Record<string, unknown>,
               module.emailOnSubmit?.toFieldId
             )
           );
-          const primary =
-            res.submissionId?.trim() ||
-            (res.submissionIds && res.submissionIds[0]?.trim()) ||
-            null;
-          setSuccessEditUrlToken(res.submissionGroupId?.trim() || primary);
         }
         setSubmitted(true);
       } catch (e) {
@@ -333,12 +344,20 @@ export function MultiStepForm({
     [isLastStep, module, submissionId]
   );
 
-  const editSubmissionUrl =
-    successEditUrlToken != null ? buildPublicEditSubmissionUrl(successEditUrlToken) : null;
-
   const onSubmitClick = useMemo(
     () => handleSubmitForm(onSubmit),
     [handleSubmitForm, onSubmit]
+  );
+
+  const capacityHint = useMemo(
+    () =>
+      capacityWaitlistHint(
+        module,
+        enrollmentSnapshot,
+        allValues as Record<string, unknown>,
+        currentVs?.repeatIndex
+      ),
+    [module, enrollmentSnapshot, allValues, currentVs?.repeatIndex]
   );
 
   if (submitted) {
@@ -352,7 +371,7 @@ export function MultiStepForm({
           emailBodyIncludesRiepilogoPlaceholder(module.emailOnSubmit?.body)
         }
         isUpdateAfterEdit={!!submissionId}
-        editSubmissionUrl={editSubmissionUrl}
+        capacityWaitlisted={capacityWaitlistedResult}
       />
     );
   }
@@ -480,6 +499,12 @@ export function MultiStepForm({
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 {repeatSubtitle}
               </Typography>
+            )}
+
+            {capacityHint && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                {capacityHint}
+              </Alert>
             )}
 
             {currentVs?.emptyRepeat && (

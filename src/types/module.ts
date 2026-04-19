@@ -112,6 +112,15 @@ export interface RiepilogoPricing {
 }
 
 /** Email dopo submit (solo lato backend); opzionale. @see docs/email-submission-templates.md */
+/** Limiti iscrizione sede × settimana (conteggio lato server). */
+export interface EnrollmentCapacity {
+  enabled: boolean;
+  sedeFieldId: string;
+  weekFieldIds: string[];
+  weekParticipationValue?: string;
+  limitsBySede: Record<string, Record<string, number>>;
+}
+
 export interface EmailOnSubmit {
   enabled: boolean;
   templateFile: string;
@@ -135,4 +144,5 @@ export interface Module {
   meta: Meta;
   steps: Step[];
   emailOnSubmit?: EmailOnSubmit;
+  enrollmentCapacity?: EnrollmentCapacity;
 }
