@@ -44,13 +44,27 @@ async function errorMessageFromResponse(
   fallback: string
 ): Promise<string> {
   try {
-    const data = (await res.json()) as { detail?: unknown; message?: unknown };
+    const data = (await res.json()) as {
+      detail?: unknown;
+      message?: unknown;
+      error?: unknown;
+    };
     if (typeof data.detail === 'string' && data.detail.trim()) return data.detail.trim();
+    if (data.detail && typeof data.detail === 'object') {
+      const d = data.detail as { message?: unknown; error?: unknown };
+      const msg =
+        typeof d.message === 'string' && d.message.trim() ? d.message.trim() : null;
+      const code =
+        typeof d.error === 'string' && d.error.trim() ? d.error.trim() : null;
+      if (msg && code) return `[${code}] ${msg}`;
+      if (msg) return msg;
+    }
     if (typeof data.message === 'string' && data.message.trim()) return data.message.trim();
+    if (typeof data.error === 'string' && data.error.trim()) return data.error.trim();
   } catch {
     // no-op: fallback below
   }
-  return fallback;
+  return `${fallback} (HTTP ${res.status})`;
 }
 
 async function fetchModule(guid: string): Promise<Module> {
