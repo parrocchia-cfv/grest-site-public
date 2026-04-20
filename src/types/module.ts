@@ -121,6 +121,12 @@ export interface EnrollmentCapacity {
   limitsBySede: Record<string, Record<string, number>>;
 }
 
+/** Capienza gite per opzione (`fieldId` -> `option.value` -> limite). */
+export interface TripCapacity {
+  enabled: boolean;
+  limitsByField: Record<string, Record<string, number>>;
+}
+
 export interface EmailOnSubmit {
   enabled: boolean;
   templateFile: string;
@@ -145,4 +151,5 @@ export interface Module {
   steps: Step[];
   emailOnSubmit?: EmailOnSubmit;
   enrollmentCapacity?: EnrollmentCapacity;
+  tripCapacity?: TripCapacity;
 }
