@@ -161,15 +161,22 @@ export function DynamicField({
           name={formKey}
           control={control}
           defaultValue=""
-          render={({ field: f }) => (
-            <TextField
-              {...f}
-              {...common}
-              fullWidth
-              margin="normal"
-              type={field.type === 'email' ? 'email' : 'text'}
-            />
-          )}
+          render={({ field: f }) => {
+            const isCodiceFiscale = field.validation === 'codice_fiscale';
+            return (
+              <TextField
+                {...f}
+                {...common}
+                fullWidth
+                margin="normal"
+                type={field.type === 'email' ? 'email' : 'text'}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  f.onChange(isCodiceFiscale ? raw.replace(/\s+/g, '') : raw);
+                }}
+              />
+            );
+          }}
         />
       );
 

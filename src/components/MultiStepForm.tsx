@@ -21,6 +21,11 @@ import {
   StepLabel,
   Typography,
   Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
 import { FormCard } from './FormCard';
 import {
@@ -312,6 +317,9 @@ export function MultiStepForm({
             >,
           };
           const res = await updatePublicSubmission(submissionId, payload);
+          if (res.ok !== true) {
+            throw new Error('Aggiornamento non riuscito. Riprova tra poco.');
+          }
           setCapacityWaitlistedResult(res.capacityWaitlisted === true);
           setNotifierEmail(
             getSubmittedEmailFromResponses(
@@ -326,6 +334,9 @@ export function MultiStepForm({
             responses: values as Record<string, string | number | boolean | string[]>,
           };
           const res = await submitForm(module.id, payload);
+          if (res.ok !== true) {
+            throw new Error('Invio non riuscito. Riprova tra poco.');
+          }
           setCapacityWaitlistedResult(res.capacityWaitlisted === true);
           setNotifierEmail(
             getSubmittedEmailFromResponses(
@@ -525,11 +536,6 @@ export function MultiStepForm({
                 />
               ))}
 
-            {submitError && (
-              <Alert severity="error" sx={{ mt: 2 }} onClose={() => setSubmitError(null)}>
-                {submitError}
-              </Alert>
-            )}
             {sanitizeNotice && (
               <Alert severity="info" sx={{ mt: 2 }} onClose={() => setSanitizeNotice(null)}>
                 {sanitizeNotice}
@@ -572,6 +578,25 @@ export function MultiStepForm({
           </Box>
         </Box>
       </FormCard>
+      <Dialog
+        open={submitError !== null}
+        onClose={() => setSubmitError(null)}
+        aria-labelledby="submit-error-dialog-title"
+        aria-describedby="submit-error-dialog-description"
+      >
+        <DialogTitle id="submit-error-dialog-title">Invio non riuscito</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="submit-error-dialog-description">
+            {submitError ??
+              'Si è verificato un errore durante l’invio. Verifica i dati e riprova.'}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSubmitError(null)} autoFocus>
+            Ho capito
+          </Button>
+        </DialogActions>
+      </Dialog>
     </FormProvider>
   );
 }

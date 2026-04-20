@@ -39,6 +39,20 @@ export class SubmissionNotFoundError extends Error {
   }
 }
 
+async function errorMessageFromResponse(
+  res: Response,
+  fallback: string
+): Promise<string> {
+  try {
+    const data = (await res.json()) as { detail?: unknown; message?: unknown };
+    if (typeof data.detail === 'string' && data.detail.trim()) return data.detail.trim();
+    if (typeof data.message === 'string' && data.message.trim()) return data.message.trim();
+  } catch {
+    // no-op: fallback below
+  }
+  return fallback;
+}
+
 async function fetchModule(guid: string): Promise<Module> {
   const base = getApiBaseUrl();
 
@@ -62,7 +76,14 @@ async function fetchSubmit(
     body: JSON.stringify(payload),
   });
 
-  if (!res.ok) throw new Error(`Submit failed: ${res.status}`);
+  if (!res.ok) {
+    throw new Error(
+      await errorMessageFromResponse(
+        res,
+        `Invio non riuscito (errore ${res.status}). Riprova tra poco.`
+      )
+    );
+  }
   return res.json() as Promise<SubmitResponse>;
 }
 
@@ -130,6 +151,13 @@ export async function updatePublicSubmission(
     }
   );
   if (res.status === 404) throw new SubmissionNotFoundError(submissionId);
-  if (!res.ok) throw new Error(`Update failed: ${res.status}`);
+  if (!res.ok) {
+    throw new Error(
+      await errorMessageFromResponse(
+        res,
+        `Aggiornamento non riuscito (errore ${res.status}). Riprova tra poco.`
+      )
+    );
+  }
   return res.json() as Promise<SubmitResponse>;
 }
