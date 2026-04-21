@@ -52,7 +52,8 @@ export function capacityWaitlistHint(
   }
   if (fullWeeks.length === 0) return null;
   return (
-    'Per la sede e le settimane selezionate i posti confermati potrebbero essere esauriti. ' +
-    'Puoi comunque inviare la richiesta: verrai messo in lista d’attesa; l’ordine interno è gestito dagli organizzatori.'
+    'Per la sede selezionata il numero massimo di posti confermati per una o più settimane è stato raggiunto. ' +
+    'Queste settimane non verranno conteggiate nel totale da pagare e, al submit, l’iscrizione sarà inserita in lista di attesa. ' +
+    'Sarai contattato dalla segreteria Grest appena si libera un posto.'
   );
 }
