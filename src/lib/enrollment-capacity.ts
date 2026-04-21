@@ -24,6 +24,25 @@ function keyForRow(
   return `${fieldId}_${repeatIndex}`;
 }
 
+function selectedCountBeforeIndex(
+  values: Record<string, unknown>,
+  cap: EnrollmentCapacity,
+  sede: string,
+  weekId: string,
+  expectedYes: string,
+  repeatIndex: number
+): number {
+  let n = 0;
+  for (let i = 0; i < repeatIndex; i++) {
+    const sedeI = String(values[keyForRow(cap.sedeFieldId, i)] ?? '').trim();
+    if (sedeI !== sede) continue;
+    const v = values[keyForRow(weekId, i)];
+    const on = typeof v === 'string' && v.trim().toLowerCase() === expectedYes;
+    if (on) n += 1;
+  }
+  return n;
+}
+
 /**
  * Messaggio se per la sede/settimane selezionate i posti confermati sono esauriti
  * (lista d’attesa al submit).
@@ -46,7 +65,14 @@ export function capacityWaitlistHint(
       typeof val === 'string' && val.trim().toLowerCase() === yes;
     if (!on) continue;
     const slot = snapshot.slots[sede]?.[wid];
-    if (slot && slot.remaining <= 0) {
+    if (!slot) continue;
+    // Considera anche i fratelli già selezionati nello stesso submit corrente.
+    const localBefore =
+      repeatIndex !== undefined && repeatIndex !== null
+        ? selectedCountBeforeIndex(values, cap, sede, wid, yes, repeatIndex)
+        : 0;
+    const effectiveRemaining = slot.remaining - localBefore;
+    if (effectiveRemaining <= 0) {
       fullWeeks.push(wid);
     }
   }
