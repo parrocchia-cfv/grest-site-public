@@ -6,9 +6,15 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import type { Module } from '@/types/module';
 import { buildStepSchema } from '@/lib/step-schema';
-import { getEnrollmentSnapshot, submitForm, updatePublicSubmission } from '@/lib/api-client';
+import {
+  getEnrollmentSnapshot,
+  getTripCapacitySnapshot,
+  submitForm,
+  updatePublicSubmission,
+} from '@/lib/api-client';
 import type { EnrollmentSnapshot } from '@/lib/enrollment-capacity';
-import { capacityWaitlistHint } from '@/lib/enrollment-capacity';
+import type { TripCapacitySnapshot } from '@/lib/enrollment-capacity';
+import { capacityWaitlistHint, tripCapacityWaitlistHint } from '@/lib/enrollment-capacity';
 import { getLabel, multilineI18nSx } from '@/lib/i18n';
 import { DynamicField } from './DynamicField';
 import { ThankYouView } from './ThankYouView';
@@ -109,6 +115,7 @@ export function MultiStepForm({
   /** Email mostrata nella thank-you (da `emailOnSubmit.toFieldId` nel payload inviato). */
   const [notifierEmail, setNotifierEmail] = useState<string | null>(null);
   const [enrollmentSnapshot, setEnrollmentSnapshot] = useState<EnrollmentSnapshot | null>(null);
+  const [tripSnapshot, setTripSnapshot] = useState<TripCapacitySnapshot | null>(null);
   /** Dopo submit/PATCH: almeno una riga in lista d’attesa (da risposta API). */
   const [capacityWaitlistedResult, setCapacityWaitlistedResult] = useState(false);
 
@@ -192,6 +199,25 @@ export function MultiStepForm({
       cancelled = true;
     };
   }, [module.id, module.guid, module.enrollmentCapacity?.enabled]);
+
+  useEffect(() => {
+    if (!module.tripCapacity?.enabled) {
+      setTripSnapshot(null);
+      return;
+    }
+    const slug = module.guid?.trim() || module.id;
+    let cancelled = false;
+    getTripCapacitySnapshot(slug)
+      .then((s) => {
+        if (!cancelled) setTripSnapshot(s);
+      })
+      .catch(() => {
+        if (!cancelled) setTripSnapshot(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [module.id, module.guid, module.tripCapacity?.enabled]);
 
   useEffect(() => {
     reset(sanitizedInitial.responses);
@@ -370,6 +396,16 @@ export function MultiStepForm({
       ),
     [module, enrollmentSnapshot, allValues, currentVs?.repeatIndex]
   );
+  const tripCapacityHint = useMemo(
+    () =>
+      tripCapacityWaitlistHint(
+        module,
+        tripSnapshot,
+        allValues as Record<string, unknown>,
+        currentVs?.repeatIndex
+      ),
+    [module, tripSnapshot, allValues, currentVs?.repeatIndex]
+  );
 
   if (submitted) {
     return (
@@ -515,6 +551,11 @@ export function MultiStepForm({
             {capacityHint && (
               <Alert severity="warning" sx={{ mb: 2 }}>
                 {capacityHint}
+              </Alert>
+            )}
+            {tripCapacityHint && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                {tripCapacityHint}
               </Alert>
             )}
 

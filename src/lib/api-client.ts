@@ -1,5 +1,5 @@
 import type { Module } from '@/types/module';
-import type { EnrollmentSnapshot } from '@/lib/enrollment-capacity';
+import type { EnrollmentSnapshot, TripCapacitySnapshot } from '@/lib/enrollment-capacity';
 import { getApiBaseUrl } from './api-config';
 
 export interface SubmitPayload {
@@ -119,6 +119,16 @@ export async function getEnrollmentSnapshot(guid: string): Promise<EnrollmentSna
   if (res.status === 404) throw new ModuleNotFoundError(guid);
   if (!res.ok) throw new Error(`Failed to load enrollment snapshot: ${res.status}`);
   return res.json() as Promise<EnrollmentSnapshot>;
+}
+
+export async function getTripCapacitySnapshot(guid: string): Promise<TripCapacitySnapshot> {
+  const base = getApiBaseUrl();
+  const res = await fetch(
+    `${base}/api/modules/${encodeURIComponent(guid)}/trip-snapshot`
+  );
+  if (res.status === 404) throw new ModuleNotFoundError(guid);
+  if (!res.ok) throw new Error(`Failed to load trip snapshot: ${res.status}`);
+  return res.json() as Promise<TripCapacitySnapshot>;
 }
 
 /**

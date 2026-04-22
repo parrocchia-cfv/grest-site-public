@@ -65,9 +65,9 @@ export function ThankYouView({
         </Typography>
         {capacityWaitlisted && (
           <Alert severity="warning" sx={{ mb: 2, ...multilineI18nSx }}>
-            Uno o più iscritti risultano in lista d’attesa perché i posti confermati per la sede e le
-            settimane scelte erano esauriti. La richiesta è comunque registrata; l’ordine interno è
-            gestito dagli organizzatori.
+            Uno o più iscritti risultano in lista d’attesa perché i posti confermati per sede/settimane
+            o per alcune gite selezionate erano esauriti. La richiesta è comunque registrata; l’ordine
+            interno è gestito dagli organizzatori.
           </Alert>
         )}
         {isUpdateAfterEdit && (
