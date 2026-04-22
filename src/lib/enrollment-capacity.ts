@@ -43,6 +43,19 @@ function selectedCountBeforeIndex(
   return n;
 }
 
+function isWeekSelected(value: unknown, expectedYes: string): boolean {
+  if (typeof value === 'boolean') return value;
+  if (typeof value !== 'string') return false;
+  const norm = value.trim().toLowerCase();
+  const yes = expectedYes.trim().toLowerCase();
+  if (norm === yes) return true;
+  // tolleranza comune per configurazioni "si/sì/yes/true/1"
+  if (yes === 'si' || yes === 'sì') {
+    return norm === 'si' || norm === 'sì' || norm === 'yes' || norm === 'true' || norm === '1';
+  }
+  return false;
+}
+
 /**
  * Messaggio se per la sede/settimane selezionate i posti confermati sono esauriti
  * (lista d’attesa al submit).
@@ -61,8 +74,7 @@ export function capacityWaitlistHint(
   const fullWeeks: string[] = [];
   for (const wid of cap.weekFieldIds) {
     const val = values[keyForRow(wid, repeatIndex)];
-    const on =
-      typeof val === 'string' && val.trim().toLowerCase() === yes;
+    const on = isWeekSelected(val, yes);
     if (!on) continue;
     const slot = snapshot.slots[sede]?.[wid];
     if (!slot) continue;
