@@ -118,6 +118,9 @@ export function MultiStepForm({
   const [tripSnapshot, setTripSnapshot] = useState<TripCapacitySnapshot | null>(null);
   /** Dopo submit/PATCH: almeno una riga in lista d’attesa (da risposta API). */
   const [capacityWaitlistedResult, setCapacityWaitlistedResult] = useState(false);
+  const [capacityWarnShown, setCapacityWarnShown] = useState(false);
+  const [tripWarnShown, setTripWarnShown] = useState(false);
+  const [liveWaitlistAlert, setLiveWaitlistAlert] = useState<string | null>(null);
 
   const sanitizedInitial = useMemo(() => {
     const merged = mergeInitialResponses(module, initialResponses);
@@ -226,6 +229,9 @@ export function MultiStepForm({
     setSubmitError(null);
     setNotifierEmail(null);
     setCapacityWaitlistedResult(false);
+    setCapacityWarnShown(false);
+    setTripWarnShown(false);
+    setLiveWaitlistAlert(null);
     if (submissionId && sanitizedInitial.removed.length > 0) {
       if (process.env.NODE_ENV !== 'production') {
         for (const r of sanitizedInitial.removed) {
@@ -407,6 +413,20 @@ export function MultiStepForm({
     [module, tripSnapshot, allValues, currentVs?.repeatIndex]
   );
 
+  useEffect(() => {
+    if (capacityHint && !capacityWarnShown) {
+      setCapacityWarnShown(true);
+      setLiveWaitlistAlert(capacityHint);
+    }
+  }, [capacityHint, capacityWarnShown]);
+
+  useEffect(() => {
+    if (tripCapacityHint && !tripWarnShown) {
+      setTripWarnShown(true);
+      setLiveWaitlistAlert(tripCapacityHint);
+    }
+  }, [tripCapacityHint, tripWarnShown]);
+
   if (submitted) {
     return (
       <ThankYouView
@@ -548,17 +568,6 @@ export function MultiStepForm({
               </Typography>
             )}
 
-            {capacityHint && (
-              <Alert severity="warning" sx={{ mb: 2 }}>
-                {capacityHint}
-              </Alert>
-            )}
-            {tripCapacityHint && (
-              <Alert severity="warning" sx={{ mb: 2 }}>
-                {tripCapacityHint}
-              </Alert>
-            )}
-
             {currentVs?.emptyRepeat && (
               <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
                 {EMPTY_REPEAT_MESSAGE[currentVs.emptyRepeatReason ?? 'zero']}
@@ -634,6 +643,24 @@ export function MultiStepForm({
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setSubmitError(null)} autoFocus>
+            Ho capito
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={liveWaitlistAlert !== null}
+        onClose={() => setLiveWaitlistAlert(null)}
+        aria-labelledby="live-capacity-dialog-title"
+        aria-describedby="live-capacity-dialog-description"
+      >
+        <DialogTitle id="live-capacity-dialog-title">Attenzione capienza</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="live-capacity-dialog-description">
+            {liveWaitlistAlert}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setLiveWaitlistAlert(null)} autoFocus>
             Ho capito
           </Button>
         </DialogActions>
