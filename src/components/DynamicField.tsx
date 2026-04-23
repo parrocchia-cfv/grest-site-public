@@ -32,6 +32,8 @@ import {
 const LOCALE = 'it';
 const DISABLED_OPTION_CAPACITY_PREFIX = 'POSTI ESAURITI';
 const DISABLED_OPTION_GENERIC_PREFIX = 'NON DISPONIBILE';
+const DISABLED_OPTION_GENERIC_REASON =
+  'Questa scelta non è disponibile con i dati attuali (requisiti non soddisfatti o capienza esaurita).';
 
 export interface DynamicFieldProps {
   field: Field;
@@ -310,6 +312,7 @@ export function DynamicField({
                           ...multilineI18nSx,
                           alignItems: 'flex-start',
                           py: isEnabled ? undefined : 1,
+                          '&.Mui-disabled': { opacity: 1 },
                         }}
                       >
                         {isEnabled ? (
@@ -346,6 +349,8 @@ export function DynamicField({
                 {!errMsg && hasHardDisabledOptions && (
                   <FormHelperText>
                     Alcune sedi sono complete: voci marcate <strong>{DISABLED_OPTION_CAPACITY_PREFIX}</strong>.
+                    {' '}
+                    {DISABLED_OPTION_GENERIC_REASON}
                   </FormHelperText>
                 )}
               </FormControl>
@@ -419,10 +424,16 @@ export function DynamicField({
                       label={
                         isEnabled
                           ? baseLabel
-                          : `${DISABLED_OPTION_GENERIC_PREFIX}: ${baseLabel}`
+                          : `${DISABLED_OPTION_GENERIC_PREFIX}: ${baseLabel}. ${DISABLED_OPTION_GENERIC_REASON}`
                       }
                       disabled={!isEnabled}
-                      sx={{ '& .MuiFormControlLabel-label': multilineI18nSx }}
+                      sx={{
+                        '& .MuiFormControlLabel-label': multilineI18nSx,
+                        '& .MuiFormControlLabel-label.Mui-disabled': {
+                          color: 'error.main',
+                          opacity: 1,
+                        },
+                      }}
                     />
                   );
                 })}
@@ -504,10 +515,16 @@ export function DynamicField({
                       label={
                         isEnabled
                           ? optLabel
-                          : `${DISABLED_OPTION_GENERIC_PREFIX}: ${optLabel}`
+                          : `${DISABLED_OPTION_GENERIC_PREFIX}: ${optLabel}. ${DISABLED_OPTION_GENERIC_REASON}`
                       }
                       disabled={!isEnabled}
-                      sx={{ '& .MuiFormControlLabel-label': multilineI18nSx }}
+                      sx={{
+                        '& .MuiFormControlLabel-label': multilineI18nSx,
+                        '& .MuiFormControlLabel-label.Mui-disabled': {
+                          color: 'error.main',
+                          opacity: 1,
+                        },
+                      }}
                     />
                   );
                 })}
