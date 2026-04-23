@@ -20,7 +20,11 @@ function enabledOptionValues(
   const options = field.options ?? [];
   const set = new Set(
     options
-      .filter((opt) => !opt.enabledIf || evaluateCondition(opt.enabledIf, getValue))
+      .filter(
+        (opt) =>
+          opt.enabled !== false &&
+          (!opt.enabledIf || evaluateCondition(opt.enabledIf, getValue))
+      )
       .map((opt) => opt.value)
   );
   if (field.type === 'select') {

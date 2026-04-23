@@ -29,6 +29,7 @@ import {
 } from '@/lib/select-other';
 
 const LOCALE = 'it';
+const DISABLED_OPTION_SUFFIX = ' (posti terminati: iscriviti in un’altra sede)';
 
 export interface DynamicFieldProps {
   field: Field;
@@ -98,7 +99,11 @@ export function DynamicField({
     }
     const opts = field.options ?? [];
     const base = opts
-      .filter((opt) => !opt.enabledIf || evaluateCondition(opt.enabledIf, getValue))
+      .filter(
+        (opt) =>
+          opt.enabled !== false &&
+          (!opt.enabledIf || evaluateCondition(opt.enabledIf, getValue))
+      )
       .map((opt) => opt.value);
     if (field.type === 'select') {
       const ov = selectOtherSentinel(field);
@@ -286,7 +291,9 @@ export function DynamicField({
                 >
                   {field.options?.map((opt) => {
                     const isEnabled =
-                      !opt.enabledIf || evaluateCondition(opt.enabledIf, getValue);
+                      opt.enabled !== false &&
+                      (!opt.enabledIf || evaluateCondition(opt.enabledIf, getValue));
+                    const baseLabel = getLabel(opt.label, LOCALE);
                     return (
                       <MenuItem
                         key={opt.value}
@@ -294,7 +301,7 @@ export function DynamicField({
                         disabled={!isEnabled}
                         sx={multilineI18nSx}
                       >
-                        {getLabel(opt.label, LOCALE)}
+                        {isEnabled ? baseLabel : `${baseLabel}${DISABLED_OPTION_SUFFIX}`}
                       </MenuItem>
                     );
                   })}
@@ -365,13 +372,15 @@ export function DynamicField({
               >
                 {field.options?.map((opt) => {
                   const isEnabled =
-                    !opt.enabledIf || evaluateCondition(opt.enabledIf, getValue);
+                    opt.enabled !== false &&
+                    (!opt.enabledIf || evaluateCondition(opt.enabledIf, getValue));
+                  const baseLabel = getLabel(opt.label, LOCALE);
                   return (
                     <FormControlLabel
                       key={opt.value}
                       value={opt.value}
                       control={<Radio />}
-                      label={getLabel(opt.label, LOCALE)}
+                      label={isEnabled ? baseLabel : `${baseLabel}${DISABLED_OPTION_SUFFIX}`}
                       disabled={!isEnabled}
                       sx={{ '& .MuiFormControlLabel-label': multilineI18nSx }}
                     />
@@ -430,10 +439,11 @@ export function DynamicField({
                   {label}
                 </FormLabel>
                 {field.options?.map((opt) => {
-                  const optLabel = getLabel(opt.label, LOCALE);
                   const isChecked = selected.includes(opt.value);
                   const isEnabled =
-                    !opt.enabledIf || evaluateCondition(opt.enabledIf, getValue);
+                    opt.enabled !== false &&
+                    (!opt.enabledIf || evaluateCondition(opt.enabledIf, getValue));
+                  const optLabel = getLabel(opt.label, LOCALE);
                   return (
                     <FormControlLabel
                       key={opt.value}
@@ -451,7 +461,7 @@ export function DynamicField({
                           }}
                         />
                       }
-                      label={optLabel}
+                      label={isEnabled ? optLabel : `${optLabel}${DISABLED_OPTION_SUFFIX}`}
                       disabled={!isEnabled}
                       sx={{ '& .MuiFormControlLabel-label': multilineI18nSx }}
                     />

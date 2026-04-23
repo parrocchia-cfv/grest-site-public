@@ -95,7 +95,9 @@ export function buildStepSchema(
       if (val !== undefined && val !== null && val !== '') {
         if (f.type === 'radio' || f.type === 'select') {
           const enabledOptions = (f.options ?? []).filter(
-            (opt) => !opt.enabledIf || evaluateCondition(opt.enabledIf, getValue)
+            (opt) =>
+              opt.enabled !== false &&
+              (!opt.enabledIf || evaluateCondition(opt.enabledIf, getValue))
           );
           let allowedValues = enabledOptions.map((opt) => opt.value);
           const otherS = f.type === 'select' ? selectOtherSentinel(f) : null;
@@ -131,7 +133,9 @@ export function buildStepSchema(
         }
         if (f.type === 'checkbox-group') {
           const enabledOptions = (f.options ?? []).filter(
-            (opt) => !opt.enabledIf || evaluateCondition(opt.enabledIf, getValue)
+            (opt) =>
+              opt.enabled !== false &&
+              (!opt.enabledIf || evaluateCondition(opt.enabledIf, getValue))
           );
           const allowedValues = new Set(enabledOptions.map((opt) => opt.value));
           if (

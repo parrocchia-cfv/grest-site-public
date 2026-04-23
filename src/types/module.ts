@@ -44,6 +44,7 @@ export type NoticeVariant = 'info' | 'warning' | 'error';
 export interface FieldOption {
   value: string;
   label: I18n;
+  enabled?: boolean;
   enabledIf?: Condition;
 }
 
