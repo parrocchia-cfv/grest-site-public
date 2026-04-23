@@ -31,9 +31,7 @@ import {
 
 const LOCALE = 'it';
 const DISABLED_OPTION_CAPACITY_PREFIX = 'POSTI ESAURITI';
-const DISABLED_OPTION_GENERIC_PREFIX = 'NON DISPONIBILE';
-const DISABLED_OPTION_GENERIC_REASON =
-  'Questa scelta non è disponibile con i dati attuali (requisiti non soddisfatti o capienza esaurita).';
+const DISABLED_OPTION_GENERIC_SUFFIX = ' (non disponibile)';
 
 export interface DynamicFieldProps {
   field: Field;
@@ -302,7 +300,7 @@ export function DynamicField({
                     const reasonPrefix =
                       opt.enabled === false
                         ? DISABLED_OPTION_CAPACITY_PREFIX
-                        : DISABLED_OPTION_GENERIC_PREFIX;
+                        : '';
                     return (
                       <MenuItem
                         key={opt.value}
@@ -319,20 +317,25 @@ export function DynamicField({
                           baseLabel
                         ) : (
                           <Box>
-                            <Typography
-                              component="span"
-                              variant="caption"
-                              color="error.main"
-                              sx={{ fontWeight: 700, display: 'block', ...multilineI18nSx }}
-                            >
-                              {reasonPrefix}
-                            </Typography>
+                            {reasonPrefix ? (
+                              <Typography
+                                component="span"
+                                variant="caption"
+                                color="error.main"
+                                sx={{ fontWeight: 700, display: 'block', ...multilineI18nSx }}
+                              >
+                                {reasonPrefix}
+                              </Typography>
+                            ) : null}
                             <Typography
                               component="span"
                               variant="body2"
-                              sx={{ color: 'text.secondary', ...multilineI18nSx }}
+                              sx={{
+                                color: reasonPrefix ? 'error.main' : 'text.secondary',
+                                ...multilineI18nSx,
+                              }}
                             >
-                              {baseLabel}
+                              {reasonPrefix ? baseLabel : `${baseLabel}${DISABLED_OPTION_GENERIC_SUFFIX}`}
                             </Typography>
                           </Box>
                         )}
@@ -349,8 +352,6 @@ export function DynamicField({
                 {!errMsg && hasHardDisabledOptions && (
                   <FormHelperText>
                     Alcune sedi sono complete: voci marcate <strong>{DISABLED_OPTION_CAPACITY_PREFIX}</strong>.
-                    {' '}
-                    {DISABLED_OPTION_GENERIC_REASON}
                   </FormHelperText>
                 )}
               </FormControl>
@@ -422,15 +423,13 @@ export function DynamicField({
                       value={opt.value}
                       control={<Radio />}
                       label={
-                        isEnabled
-                          ? baseLabel
-                          : `${DISABLED_OPTION_GENERIC_PREFIX}: ${baseLabel}. ${DISABLED_OPTION_GENERIC_REASON}`
+                        isEnabled ? baseLabel : `${baseLabel}${DISABLED_OPTION_GENERIC_SUFFIX}`
                       }
                       disabled={!isEnabled}
                       sx={{
                         '& .MuiFormControlLabel-label': multilineI18nSx,
                         '& .MuiFormControlLabel-label.Mui-disabled': {
-                          color: 'error.main',
+                          color: 'text.secondary',
                           opacity: 1,
                         },
                       }}
@@ -513,15 +512,13 @@ export function DynamicField({
                         />
                       }
                       label={
-                        isEnabled
-                          ? optLabel
-                          : `${DISABLED_OPTION_GENERIC_PREFIX}: ${optLabel}. ${DISABLED_OPTION_GENERIC_REASON}`
+                        isEnabled ? optLabel : `${optLabel}${DISABLED_OPTION_GENERIC_SUFFIX}`
                       }
                       disabled={!isEnabled}
                       sx={{
                         '& .MuiFormControlLabel-label': multilineI18nSx,
                         '& .MuiFormControlLabel-label.Mui-disabled': {
-                          color: 'error.main',
+                          color: 'text.secondary',
                           opacity: 1,
                         },
                       }}
