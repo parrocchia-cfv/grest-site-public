@@ -205,3 +205,61 @@ test('select altro: mantiene valore sintetico e testo', () => {
   assert.equal(responses.sel_other, 'specificato');
   assert.equal(removed.length, 0);
 });
+
+const capacityFullModule: Module = {
+  id: 'mod-cap',
+  version: 1,
+  meta: {
+    title: { it: 'Test' },
+    description: { it: 'Test' },
+    thankYou: { title: { it: 'ok' }, body: { it: 'ok' }, notes: { it: 'ok' } },
+  },
+  steps: [
+    {
+      id: 's1',
+      title: { it: 'S' },
+      fields: [
+        {
+          id: 'sede',
+          type: 'select',
+          label: { it: 'Sede' },
+          required: false,
+          options: [
+            { value: 'a', label: { it: 'A' } },
+            { value: 'b', label: { it: 'B' }, enabled: false },
+          ],
+        },
+        {
+          id: 'trips',
+          type: 'checkbox-group',
+          label: { it: 'Gite' },
+          required: false,
+          options: [
+            { value: 'ok', label: { it: 'Ok' } },
+            { value: 'full', label: { it: 'Piena' }, enabled: false },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+test('enabled=false: rimuovo valori su nuovo invio', () => {
+  const { responses } = sanitizeResponsesBySchema(capacityFullModule, {
+    sede: 'b',
+    trips: ['ok', 'full'],
+  });
+  assert.equal(responses.sede, '');
+  assert.deepEqual(responses.trips, ['ok']);
+});
+
+test('enabled=false + keepHardDisabledSelections: modifica conserva selezioni', () => {
+  const { responses, removed } = sanitizeResponsesBySchema(
+    capacityFullModule,
+    { sede: 'b', trips: ['ok', 'full'] },
+    { keepHardDisabledSelections: true }
+  );
+  assert.equal(responses.sede, 'b');
+  assert.deepEqual(responses.trips, ['ok', 'full']);
+  assert.equal(removed.length, 0);
+});

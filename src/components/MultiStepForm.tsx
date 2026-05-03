@@ -127,7 +127,7 @@ export function MultiStepForm({
     if (!submissionId) {
       return { responses: merged, removed: [] as { fieldId: string; value: string }[] };
     }
-    return sanitizeResponsesBySchema(module, merged);
+    return sanitizeResponsesBySchema(module, merged, { keepHardDisabledSelections: true });
   }, [module, initialResponses, submissionId]);
 
   const mergedDefaultValues = sanitizedInitial.responses;
@@ -146,6 +146,7 @@ export function MultiStepForm({
       }
       const schema = buildStepSchema(vs.step, values as FormValues, {
         repeatIndex: vs.repeatIndex,
+        submissionEditMode: Boolean(submissionId),
       });
       return zodResolver(schema)(values, context, options);
     },
@@ -583,6 +584,7 @@ export function MultiStepForm({
                   formKey={fieldFormKey(field.id, currentVs.step, currentVs.repeatIndex)}
                   step={currentVs.step}
                   repeatIndex={currentVs.repeatIndex}
+                  submissionEditMode={Boolean(submissionId)}
                 />
               ))}
 

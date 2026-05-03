@@ -13,6 +13,10 @@ export interface SanitizeResponsesResult {
   removed: RemovedOptionEntry[];
 }
 
+function isHardCapacityDisabledOption(field: Field, value: string): boolean {
+  return (field.options ?? []).some((o) => o.value === value && o.enabled === false);
+}
+
 function enabledOptionValues(
   field: Field,
   getValue: (fieldId: string) => unknown
@@ -39,7 +43,8 @@ function sanitizeFieldInContext(
   storageKey: string,
   getValue: (fieldId: string) => unknown,
   state: Record<string, unknown>,
-  removed: RemovedOptionEntry[]
+  removed: RemovedOptionEntry[],
+  keepHardDisabledSelections: boolean
 ): boolean {
   if (field.type === 'notice') {
     return false;
@@ -51,7 +56,12 @@ function sanitizeFieldInContext(
 
   if (field.type === 'radio' || field.type === 'select') {
     const current = state[storageKey];
-    if (typeof current === 'string' && current !== '' && !enabled.has(current)) {
+    if (
+      typeof current === 'string' &&
+      current !== '' &&
+      !enabled.has(current) &&
+      !(keepHardDisabledSelections && isHardCapacityDisabledOption(field, current))
+    ) {
       removed.push({ fieldId: storageKey, value: current });
       state[storageKey] = '';
       const otherKey = `${storageKey}_other`;
@@ -79,7 +89,9 @@ function sanitizeFieldInContext(
   const current = state[storageKey];
   if (!Array.isArray(current) || current.length === 0) return false;
   const selected = current.filter((v): v is string => typeof v === 'string');
-  const filtered = selected.filter((v) => enabled.has(v));
+  const filtered = selected.filter(
+    (v) => enabled.has(v) || (keepHardDisabledSelections && isHardCapacityDisabledOption(field, v))
+  );
   if (filtered.length !== selected.length) {
     for (const val of selected) {
       if (!enabled.has(val)) removed.push({ fieldId: storageKey, value: val });
@@ -94,7 +106,8 @@ function sanitizeStepContext(
   step: Step,
   repeatIndex: number | null,
   state: Record<string, unknown>,
-  removed: RemovedOptionEntry[]
+  removed: RemovedOptionEntry[],
+  keepHardDisabledSelections: boolean
 ): boolean {
   const getValue = makeConditionGetValue(state, step, repeatIndex);
   let changed = false;
@@ -103,17 +116,28 @@ function sanitizeStepContext(
       repeatIndex !== null && step.repeatFromField
         ? `${field.id}_${repeatIndex}`
         : field.id;
-    if (sanitizeFieldInContext(field, key, getValue, state, removed)) changed = true;
+    if (sanitizeFieldInContext(field, key, getValue, state, removed, keepHardDisabledSelections))
+      changed = true;
   }
   return changed;
 }
 
+export interface SanitizeResponsesOptions {
+  /**
+   * Modifica iscrizione: non rimuove valori su opzioni con `enabled: false`
+   * (es. posti esauriti nella sede), così restano visibili e disselezionabili.
+   */
+  keepHardDisabledSelections?: boolean;
+}
+
 export function sanitizeResponsesBySchema(
   module: Pick<Module, 'steps'>,
-  responses: Record<string, unknown>
+  responses: Record<string, unknown>,
+  options?: SanitizeResponsesOptions
 ): SanitizeResponsesResult {
   const state = { ...responses };
   const removed: RemovedOptionEntry[] = [];
+  const keepHard = Boolean(options?.keepHardDisabledSelections);
 
   // Fixpoint pass: clearing one value can disable other dependent options.
   for (let pass = 0; pass < 8; pass++) {
@@ -121,13 +145,13 @@ export function sanitizeResponsesBySchema(
 
     for (const step of module.steps) {
       if (!step.repeatFromField) {
-        if (sanitizeStepContext(step, null, state, removed)) changed = true;
+        if (sanitizeStepContext(step, null, state, removed, keepHard)) changed = true;
         continue;
       }
 
       const count = computeRepeatCount(state, step.repeatFromField);
       for (let i = 0; i < count; i++) {
-        if (sanitizeStepContext(step, i, state, removed)) changed = true;
+        if (sanitizeStepContext(step, i, state, removed, keepHard)) changed = true;
       }
     }
 

@@ -32,6 +32,11 @@ function baseTypeForField(field: Field): z.ZodTypeAny {
 export interface BuildStepSchemaOptions {
   /** Indice ripetizione per suffissi `_i`; `null` se step non ripetuto */
   repeatIndex: number | null;
+  /**
+   * PATCH iscrizione: consente valori già salvati su opzioni `enabled: false` (posti esauriti),
+   * così l’utente può confermare o cambiare senza errore «Selezione non disponibile».
+   */
+  submissionEditMode?: boolean;
 }
 
 /**
@@ -43,6 +48,7 @@ export function buildStepSchema(
   options?: BuildStepSchemaOptions
 ) {
   const repeatIndex = options?.repeatIndex ?? null;
+  const submissionEditMode = Boolean(options?.submissionEditMode);
   const inRepeat = repeatIndex !== null && !!step.repeatFromField;
 
   const keyFor = (fieldId: string) =>
@@ -102,6 +108,14 @@ export function buildStepSchema(
           let allowedValues = enabledOptions.map((opt) => opt.value);
           const otherS = f.type === 'select' ? selectOtherSentinel(f) : null;
           if (otherS) allowedValues = [...allowedValues, otherS];
+          if (
+            submissionEditMode &&
+            typeof val === 'string' &&
+            (f.options ?? []).some((o) => o.value === val && o.enabled === false) &&
+            !allowedValues.includes(val)
+          ) {
+            allowedValues = [...allowedValues, val];
+          }
           if (typeof val !== 'string' || !allowedValues.includes(val)) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
@@ -138,6 +152,16 @@ export function buildStepSchema(
               (!opt.enabledIf || evaluateCondition(opt.enabledIf, getValue))
           );
           const allowedValues = new Set(enabledOptions.map((opt) => opt.value));
+          if (submissionEditMode && Array.isArray(val)) {
+            for (const v of val) {
+              if (
+                typeof v === 'string' &&
+                (f.options ?? []).some((o) => o.value === v && o.enabled === false)
+              ) {
+                allowedValues.add(v);
+              }
+            }
+          }
           if (
             !Array.isArray(val) ||
             val.some((v) => typeof v !== 'string' || !allowedValues.has(v))

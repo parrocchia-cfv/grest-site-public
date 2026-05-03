@@ -40,6 +40,8 @@ export interface DynamicFieldProps {
   step: Step;
   /** `null` se step non ripetuto */
   repeatIndex: number | null;
+  /** Modifica iscrizione: opzioni `enabled:false` già selezionate restano modificabili. */
+  submissionEditMode?: boolean;
 }
 
 function RequiredMark() {
@@ -52,6 +54,17 @@ function RequiredMark() {
       *
     </Box>
   );
+}
+
+function isOptionSelectableInField(
+  opt: NonNullable<Field['options']>[number],
+  getValue: (fieldId: string) => unknown,
+  submissionEditMode: boolean,
+  isCurrentlySelected: boolean
+): boolean {
+  if (opt.enabledIf && !evaluateCondition(opt.enabledIf, getValue)) return false;
+  if (opt.enabled === false && !(submissionEditMode && isCurrentlySelected)) return false;
+  return true;
 }
 
 function fieldError(
@@ -70,6 +83,7 @@ export function DynamicField({
   formKey,
   step,
   repeatIndex,
+  submissionEditMode = false,
 }: DynamicFieldProps) {
   const {
     control,
@@ -100,19 +114,21 @@ export function DynamicField({
       return null;
     }
     const opts = field.options ?? [];
+    const selectionForOpt = (optValue: string) =>
+      field.type === 'checkbox-group'
+        ? Array.isArray(values[formKey]) &&
+          (values[formKey] as string[]).includes(optValue)
+        : typeof values[formKey] === 'string' && values[formKey] === optValue;
+
     const base = opts
-      .filter(
-        (opt) =>
-          opt.enabled !== false &&
-          (!opt.enabledIf || evaluateCondition(opt.enabledIf, getValue))
-      )
+      .filter((opt) => isOptionSelectableInField(opt, getValue, submissionEditMode, selectionForOpt(opt.value)))
       .map((opt) => opt.value);
     if (field.type === 'select') {
       const ov = selectOtherSentinel(field);
       if (ov) return [...base, ov];
     }
     return base;
-  }, [field, getValue]);
+  }, [field, formKey, getValue, submissionEditMode, values]);
 
   useEffect(() => {
     if ((field.type !== 'radio' && field.type !== 'select') || !enabledOptionValues) return;
@@ -293,9 +309,12 @@ export function DynamicField({
                   inputProps={{ 'aria-invalid': !!errMsg }}
                 >
                   {field.options?.map((opt) => {
-                    const isEnabled =
-                      opt.enabled !== false &&
-                      (!opt.enabledIf || evaluateCondition(opt.enabledIf, getValue));
+                    const isEnabled = isOptionSelectableInField(
+                      opt,
+                      getValue,
+                      submissionEditMode,
+                      (f.value as string | undefined) === opt.value
+                    );
                     const baseLabel = getLabel(opt.label, LOCALE);
                     const reasonPrefix =
                       opt.enabled === false
@@ -413,9 +432,12 @@ export function DynamicField({
                 onChange={(_, v) => f.onChange(v)}
               >
                 {field.options?.map((opt) => {
-                  const isEnabled =
-                    opt.enabled !== false &&
-                    (!opt.enabledIf || evaluateCondition(opt.enabledIf, getValue));
+                  const isEnabled = isOptionSelectableInField(
+                    opt,
+                    getValue,
+                    submissionEditMode,
+                    (f.value as string | undefined) === opt.value
+                  );
                   const baseLabel = getLabel(opt.label, LOCALE);
                   return (
                     <FormControlLabel
@@ -490,9 +512,12 @@ export function DynamicField({
                 </FormLabel>
                 {field.options?.map((opt) => {
                   const isChecked = selected.includes(opt.value);
-                  const isEnabled =
-                    opt.enabled !== false &&
-                    (!opt.enabledIf || evaluateCondition(opt.enabledIf, getValue));
+                  const isEnabled = isOptionSelectableInField(
+                    opt,
+                    getValue,
+                    submissionEditMode,
+                    isChecked
+                  );
                   const optLabel = getLabel(opt.label, LOCALE);
                   return (
                     <FormControlLabel
