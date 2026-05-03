@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
-import type { Field, Step } from '@/types/module';
+import { useEffect, useMemo, type ReactNode } from 'react';
+import type { Field, Step, TripCapacity } from '@/types/module';
+import { isTripOptionExhausted, type TripCapacitySnapshot } from '@/lib/enrollment-capacity';
 import { getLabel, multilineI18nSx } from '@/lib/i18n';
 import { evaluateCondition } from '@/lib/conditions';
 import { makeConditionGetValue } from '@/lib/repeat-steps';
@@ -30,8 +31,32 @@ import {
 } from '@/lib/select-other';
 
 const LOCALE = 'it';
-const DISABLED_OPTION_CAPACITY_PREFIX = 'POSTI ESAURITI';
+/** Vicino alle opzioni con `enabled: false` (capienza esaurita nello schema). */
+const CAPACITY_EXHAUSTED_LABEL = 'Posti esauriti';
 const DISABLED_OPTION_GENERIC_SUFFIX = ' (non disponibile)';
+
+function capacityExhaustedOptionLabel(baseLabel: string) {
+  return (
+    <Box sx={{ py: 0.25, maxWidth: '100%' }}>
+      <Typography
+        component="span"
+        variant="caption"
+        color="error"
+        sx={{ fontWeight: 700, display: 'block', mb: 0.25, ...multilineI18nSx }}
+      >
+        {CAPACITY_EXHAUSTED_LABEL}
+      </Typography>
+      <Typography
+        component="span"
+        variant="body2"
+        color="error.main"
+        sx={{ ...multilineI18nSx }}
+      >
+        {baseLabel}
+      </Typography>
+    </Box>
+  );
+}
 
 export interface DynamicFieldProps {
   field: Field;
@@ -42,6 +67,9 @@ export interface DynamicFieldProps {
   repeatIndex: number | null;
   /** Modifica iscrizione: opzioni `enabled:false` già selezionate restano modificabili. */
   submissionEditMode?: boolean;
+  /** Snapshot gite (POST); con `tripCapacity` abilita disabilitazione e etichetta «Posti esauriti». */
+  tripCapacity?: TripCapacity;
+  tripSnapshot?: TripCapacitySnapshot | null;
 }
 
 function RequiredMark() {
@@ -60,10 +88,12 @@ function isOptionSelectableInField(
   opt: NonNullable<Field['options']>[number],
   getValue: (fieldId: string) => unknown,
   submissionEditMode: boolean,
-  isCurrentlySelected: boolean
+  isCurrentlySelected: boolean,
+  tripPlacesExhausted: boolean
 ): boolean {
   if (opt.enabledIf && !evaluateCondition(opt.enabledIf, getValue)) return false;
   if (opt.enabled === false && !(submissionEditMode && isCurrentlySelected)) return false;
+  if (tripPlacesExhausted && !(submissionEditMode && isCurrentlySelected)) return false;
   return true;
 }
 
@@ -84,6 +114,8 @@ export function DynamicField({
   step,
   repeatIndex,
   submissionEditMode = false,
+  tripCapacity,
+  tripSnapshot = null,
 }: DynamicFieldProps) {
   const {
     control,
@@ -100,6 +132,39 @@ export function DynamicField({
   const isRequired =
     field.required ||
     (!!field.requiredIf && evaluateCondition(field.requiredIf, getValue));
+
+  /** Capienza gite (snapshot): per ogni `option.value` se i posti confermati sono esauriti. */
+  const tripExhaustedByOption = useMemo(() => {
+    const map = new Map<string, boolean>();
+    if (
+      !tripCapacity?.enabled ||
+      !tripSnapshot?.enabled ||
+      !tripCapacity.limitsByField?.[field.id]
+    ) {
+      return map;
+    }
+    for (const opt of field.options ?? []) {
+      map.set(
+        opt.value,
+        isTripOptionExhausted(
+          tripCapacity,
+          tripSnapshot,
+          values,
+          field.id,
+          opt.value,
+          repeatIndex
+        )
+      );
+    }
+    return map;
+  }, [field.id, field.options, repeatIndex, tripCapacity, tripSnapshot, values]);
+
+  const hasTripExhaustedOptionOnField = useMemo(() => {
+    for (const opt of field.options ?? []) {
+      if (tripExhaustedByOption.get(opt.value)) return true;
+    }
+    return false;
+  }, [field.options, tripExhaustedByOption]);
 
   const label = getLabel(field.label, LOCALE);
   const placeholder = getLabel(field.placeholder, LOCALE);
@@ -121,14 +186,23 @@ export function DynamicField({
         : typeof values[formKey] === 'string' && values[formKey] === optValue;
 
     const base = opts
-      .filter((opt) => isOptionSelectableInField(opt, getValue, submissionEditMode, selectionForOpt(opt.value)))
+      .filter((opt) => {
+        const tripFull = tripExhaustedByOption.get(opt.value) ?? false;
+        return isOptionSelectableInField(
+          opt,
+          getValue,
+          submissionEditMode,
+          selectionForOpt(opt.value),
+          tripFull
+        );
+      })
       .map((opt) => opt.value);
     if (field.type === 'select') {
       const ov = selectOtherSentinel(field);
       if (ov) return [...base, ov];
     }
     return base;
-  }, [field, formKey, getValue, submissionEditMode, values]);
+  }, [field, formKey, getValue, submissionEditMode, tripExhaustedByOption, values]);
 
   useEffect(() => {
     if ((field.type !== 'radio' && field.type !== 'select') || !enabledOptionValues) return;
@@ -281,7 +355,8 @@ export function DynamicField({
       const otherPlaceholder = field.selectOther?.placeholder?.it
         ? getLabel(field.selectOther.placeholder, LOCALE)
         : undefined;
-      const hasHardDisabledOptions = (field.options ?? []).some((opt) => opt.enabled === false);
+      const hasSchemaCapacityOptions = (field.options ?? []).some((opt) => opt.enabled === false);
+      const showCapacityHelper = hasSchemaCapacityOptions || hasTripExhaustedOptionOnField;
       return (
         <>
           <Controller
@@ -309,17 +384,16 @@ export function DynamicField({
                   inputProps={{ 'aria-invalid': !!errMsg }}
                 >
                   {field.options?.map((opt) => {
+                    const tripFull = tripExhaustedByOption.get(opt.value) ?? false;
                     const isEnabled = isOptionSelectableInField(
                       opt,
                       getValue,
                       submissionEditMode,
-                      (f.value as string | undefined) === opt.value
+                      (f.value as string | undefined) === opt.value,
+                      tripFull
                     );
                     const baseLabel = getLabel(opt.label, LOCALE);
-                    const reasonPrefix =
-                      opt.enabled === false
-                        ? DISABLED_OPTION_CAPACITY_PREFIX
-                        : '';
+                    const showPostiEsauritiBlock = opt.enabled === false || tripFull;
                     return (
                       <MenuItem
                         key={opt.value}
@@ -334,29 +408,17 @@ export function DynamicField({
                       >
                         {isEnabled ? (
                           baseLabel
+                        ) : showPostiEsauritiBlock ? (
+                          capacityExhaustedOptionLabel(baseLabel)
                         ) : (
-                          <Box>
-                            {reasonPrefix ? (
-                              <Typography
-                                component="span"
-                                variant="caption"
-                                color="error.main"
-                                sx={{ fontWeight: 700, display: 'block', ...multilineI18nSx }}
-                              >
-                                {reasonPrefix}
-                              </Typography>
-                            ) : null}
-                            <Typography
-                              component="span"
-                              variant="body2"
-                              sx={{
-                                color: reasonPrefix ? 'error.main' : 'text.secondary',
-                                ...multilineI18nSx,
-                              }}
-                            >
-                              {reasonPrefix ? baseLabel : `${baseLabel}${DISABLED_OPTION_GENERIC_SUFFIX}`}
-                            </Typography>
-                          </Box>
+                          <Typography
+                            component="span"
+                            variant="body2"
+                            color="text.secondary"
+                            sx={multilineI18nSx}
+                          >
+                            {`${baseLabel}${DISABLED_OPTION_GENERIC_SUFFIX}`}
+                          </Typography>
                         )}
                       </MenuItem>
                     );
@@ -368,9 +430,13 @@ export function DynamicField({
                   )}
                 </Select>
                 {errMsg && <FormHelperText>{errMsg}</FormHelperText>}
-                {!errMsg && hasHardDisabledOptions && (
-                  <FormHelperText>
-                    Alcune sedi sono complete: voci marcate <strong>{DISABLED_OPTION_CAPACITY_PREFIX}</strong>.
+                {!errMsg && showCapacityHelper && (
+                  <FormHelperText component="div">
+                    Alcune opzioni non sono selezionabili: sono indicate con{' '}
+                    <Box component="span" sx={{ fontWeight: 700, color: 'error.main' }}>
+                      {CAPACITY_EXHAUSTED_LABEL}
+                    </Box>{' '}
+                    quando i posti sono esauriti.
                   </FormHelperText>
                 )}
               </FormControl>
@@ -410,7 +476,10 @@ export function DynamicField({
       );
     }
 
-    case 'radio':
+    case 'radio': {
+      const stackCapacityOptions =
+        (field.options ?? []).some((opt) => opt.enabled === false) ||
+        hasTripExhaustedOptionOnField;
       return (
         <Controller
           name={formKey}
@@ -427,29 +496,48 @@ export function DynamicField({
                 {label}
               </FormLabel>
               <RadioGroup
-                row
+                sx={{
+                  flexDirection: stackCapacityOptions ? 'column' : 'row',
+                  alignItems: 'flex-start',
+                  gap: stackCapacityOptions ? 1 : undefined,
+                  flexWrap: 'wrap',
+                }}
+                row={!stackCapacityOptions}
                 value={f.value ?? ''}
                 onChange={(_, v) => f.onChange(v)}
               >
                 {field.options?.map((opt) => {
+                  const tripFull = tripExhaustedByOption.get(opt.value) ?? false;
                   const isEnabled = isOptionSelectableInField(
                     opt,
                     getValue,
                     submissionEditMode,
-                    (f.value as string | undefined) === opt.value
+                    (f.value as string | undefined) === opt.value,
+                    tripFull
                   );
                   const baseLabel = getLabel(opt.label, LOCALE);
+                  const showPostiEsauritiBlock = opt.enabled === false || tripFull;
+                  let labelNode: ReactNode = baseLabel;
+                  if (!isEnabled && showPostiEsauritiBlock) {
+                    labelNode = capacityExhaustedOptionLabel(baseLabel);
+                  } else if (!isEnabled) {
+                    labelNode = `${baseLabel}${DISABLED_OPTION_GENERIC_SUFFIX}`;
+                  }
                   return (
                     <FormControlLabel
                       key={opt.value}
                       value={opt.value}
                       control={<Radio />}
-                      label={
-                        isEnabled ? baseLabel : `${baseLabel}${DISABLED_OPTION_GENERIC_SUFFIX}`
-                      }
+                      label={labelNode}
                       disabled={!isEnabled}
                       sx={{
-                        '& .MuiFormControlLabel-label': multilineI18nSx,
+                        alignItems: 'flex-start',
+                        m: stackCapacityOptions ? 0 : undefined,
+                        '& .MuiFormControlLabel-label': {
+                          ...multilineI18nSx,
+                          pt:
+                            stackCapacityOptions && !isEnabled && showPostiEsauritiBlock ? 0 : 0.5,
+                        },
                         '& .MuiFormControlLabel-label.Mui-disabled': {
                           color: 'text.secondary',
                           opacity: 1,
@@ -460,10 +548,20 @@ export function DynamicField({
                 })}
               </RadioGroup>
               {errMsg && <FormHelperText>{errMsg}</FormHelperText>}
+              {!errMsg && stackCapacityOptions && (
+                <FormHelperText component="div">
+                  Alcune opzioni non sono selezionabili: sono indicate con{' '}
+                  <Box component="span" sx={{ fontWeight: 700, color: 'error.main' }}>
+                    {CAPACITY_EXHAUSTED_LABEL}
+                  </Box>{' '}
+                  quando i posti sono esauriti.
+                </FormHelperText>
+              )}
             </FormControl>
           )}
         />
       );
+    }
 
     case 'checkbox':
       return (
@@ -494,7 +592,10 @@ export function DynamicField({
         />
       );
 
-    case 'checkbox-group':
+    case 'checkbox-group': {
+      const showTripOrSchemaCapacity =
+        (field.options ?? []).some((opt) => opt.enabled === false) ||
+        hasTripExhaustedOptionOnField;
       return (
         <Controller
           name={formKey}
@@ -512,13 +613,22 @@ export function DynamicField({
                 </FormLabel>
                 {field.options?.map((opt) => {
                   const isChecked = selected.includes(opt.value);
+                  const tripFull = tripExhaustedByOption.get(opt.value) ?? false;
                   const isEnabled = isOptionSelectableInField(
                     opt,
                     getValue,
                     submissionEditMode,
-                    isChecked
+                    isChecked,
+                    tripFull
                   );
                   const optLabel = getLabel(opt.label, LOCALE);
+                  const showPostiEsauritiBlock = opt.enabled === false || tripFull;
+                  let labelNode: ReactNode = optLabel;
+                  if (!isEnabled && showPostiEsauritiBlock) {
+                    labelNode = capacityExhaustedOptionLabel(optLabel);
+                  } else if (!isEnabled) {
+                    labelNode = `${optLabel}${DISABLED_OPTION_GENERIC_SUFFIX}`;
+                  }
                   return (
                     <FormControlLabel
                       key={opt.value}
@@ -536,11 +646,11 @@ export function DynamicField({
                           }}
                         />
                       }
-                      label={
-                        isEnabled ? optLabel : `${optLabel}${DISABLED_OPTION_GENERIC_SUFFIX}`
-                      }
+                      label={labelNode}
                       disabled={!isEnabled}
                       sx={{
+                        alignItems: 'flex-start',
+                        mb: showTripOrSchemaCapacity && !isEnabled && showPostiEsauritiBlock ? 0.5 : 0,
                         '& .MuiFormControlLabel-label': multilineI18nSx,
                         '& .MuiFormControlLabel-label.Mui-disabled': {
                           color: 'text.secondary',
@@ -551,11 +661,21 @@ export function DynamicField({
                   );
                 })}
                 {errMsg && <FormHelperText>{errMsg}</FormHelperText>}
+                {!errMsg && showTripOrSchemaCapacity && (
+                  <FormHelperText component="div">
+                    Alcune opzioni non sono selezionabili: sono indicate con{' '}
+                    <Box component="span" sx={{ fontWeight: 700, color: 'error.main' }}>
+                      {CAPACITY_EXHAUSTED_LABEL}
+                    </Box>{' '}
+                    quando i posti sono esauriti.
+                  </FormHelperText>
+                )}
               </FormControl>
             );
           }}
         />
       );
+    }
 
     case 'switch':
       return (

@@ -585,6 +585,8 @@ export function MultiStepForm({
                   step={currentVs.step}
                   repeatIndex={currentVs.repeatIndex}
                   submissionEditMode={Boolean(submissionId)}
+                  tripCapacity={module.tripCapacity}
+                  tripSnapshot={tripSnapshot}
                 />
               ))}
 

@@ -1,4 +1,4 @@
-import type { EnrollmentCapacity, Module } from '@/types/module';
+import type { EnrollmentCapacity, Module, TripCapacity } from '@/types/module';
 
 export interface EnrollmentSnapshotSlot {
   limit: number;
@@ -126,6 +126,27 @@ export function capacityWaitlistHint(
     'Queste settimane non verranno conteggiate nel totale da pagare e, al submit, l’iscrizione sarà inserita in lista di attesa. ' +
     'Sarai contattato dalla segreteria Grest appena si libera un posto.'
   );
+}
+
+/** Stessa logica del messaggio lista d’attesa: posti confermati esauriti per quell’opzione (riga ripetuta inclusa). */
+export function isTripOptionExhausted(
+  tripCfg: TripCapacity | undefined,
+  snapshot: TripCapacitySnapshot | null,
+  values: Record<string, unknown>,
+  fieldId: string,
+  optionValue: string,
+  repeatIndex: number | null
+): boolean {
+  if (!tripCfg?.enabled || !snapshot?.enabled || !snapshot.limitsByField) return false;
+  if (!tripCfg.limitsByField[fieldId] || !(optionValue in tripCfg.limitsByField[fieldId]))
+    return false;
+  const slot = snapshot.limitsByField[fieldId]?.[optionValue];
+  if (!slot) return false;
+  const localBefore =
+    typeof repeatIndex === 'number'
+      ? selectedTripOptionCountBeforeIndex(values, fieldId, optionValue, repeatIndex)
+      : 0;
+  return slot.remaining - localBefore <= 0;
 }
 
 export function tripCapacityWaitlistHint(
